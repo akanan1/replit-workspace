@@ -1,19 +1,21 @@
-import { OAuth2TokenProvider } from "../../auth/oauth2";
+import { JwtBearerAuthProvider } from "../../auth/jwt-bearer";
 import { DocumentReferencePusher } from "../../document-reference/pusher";
 import { FhirClient } from "../../fhir/client";
 import type { EpicConfig } from "./config";
 
 export interface EpicEhrClient {
   fhir: FhirClient;
-  auth: OAuth2TokenProvider;
+  auth: JwtBearerAuthProvider;
   documentReference: DocumentReferencePusher;
 }
 
 export function createEpicClient(config: EpicConfig): EpicEhrClient {
-  const auth = new OAuth2TokenProvider({
+  const auth = new JwtBearerAuthProvider({
     tokenUrl: config.tokenUrl,
     clientId: config.clientId,
-    clientSecret: config.clientSecret,
+    privateKey: config.privateKey,
+    algorithm: config.algorithm,
+    keyId: config.keyId,
     scope: config.scope,
     fetchImpl: config.fetchImpl,
   });

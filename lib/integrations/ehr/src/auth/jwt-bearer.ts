@@ -1,4 +1,10 @@
-import type { AccessToken, OAuth2Config, TokenProvider } from "./types";
+import { randomUUID } from "node:crypto";
+import { signJwt } from "./jwt";
+import type {
+  AccessToken,
+  JwtBearerAuthConfig,
+  TokenProvider,
+} from "./types";
 
 interface TokenResponse {
   access_token: string;
@@ -7,17 +13,18 @@ interface TokenResponse {
   scope?: string;
 }
 
-// Refresh slightly before the token actually expires to avoid races against
-// in-flight requests using a token that's about to die.
 const REFRESH_SKEW_MS = 30_000;
+const DEFAULT_ASSERTION_LIFETIME_SECONDS = 300;
+const CLIENT_ASSERTION_TYPE =
+  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
-export class OAuth2TokenProvider implements TokenProvider {
-  private readonly config: OAuth2Config;
+export class JwtBearerAuthProvider implements TokenProvider {
+  private readonly config: JwtBearerAuthConfig;
   private readonly fetchImpl: typeof fetch;
   private cached: AccessToken | null = null;
   private inflight: Promise<AccessToken> | null = null;
 
-  constructor(config: OAuth2Config) {
+  constructor(config: JwtBearerAuthConfig) {
     this.config = config;
     this.fetchImpl = config.fetchImpl ?? fetch;
   }
@@ -43,21 +50,44 @@ export class OAuth2TokenProvider implements TokenProvider {
     this.cached = null;
   }
 
+  private buildAssertion(): string {
+    const now = Math.floor(Date.now() / 1000);
+    const lifetime =
+      this.config.assertionLifetimeSeconds ??
+      DEFAULT_ASSERTION_LIFETIME_SECONDS;
+
+    const header: Record<string, unknown> = {};
+    if (this.config.keyId) header.kid = this.config.keyId;
+
+    const claims: Record<string, unknown> = {
+      iss: this.config.clientId,
+      sub: this.config.clientId,
+      aud: this.config.audience ?? this.config.tokenUrl,
+      jti: randomUUID(),
+      iat: now,
+      exp: now + lifetime,
+    };
+
+    return signJwt({
+      header,
+      claims,
+      privateKey: this.config.privateKey,
+      algorithm: this.config.algorithm,
+    });
+  }
+
   private async fetchToken(): Promise<AccessToken> {
     const body = new URLSearchParams();
     body.set("grant_type", "client_credentials");
+    body.set("client_assertion_type", CLIENT_ASSERTION_TYPE);
+    body.set("client_assertion", this.buildAssertion());
     if (this.config.scope) body.set("scope", this.config.scope);
-
-    const basic = Buffer.from(
-      `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`,
-    ).toString("base64");
 
     const res = await this.fetchImpl(this.config.tokenUrl, {
       method: "POST",
       headers: {
         accept: "application/json",
         "content-type": "application/x-www-form-urlencoded",
-        authorization: `Basic ${basic}`,
       },
       body: body.toString(),
     });
@@ -65,7 +95,7 @@ export class OAuth2TokenProvider implements TokenProvider {
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       throw new Error(
-        `OAuth2 token request failed: ${res.status} ${res.statusText}` +
+        `JWT-bearer token request failed: ${res.status} ${res.statusText}` +
           (detail ? ` — ${detail}` : ""),
       );
     }
