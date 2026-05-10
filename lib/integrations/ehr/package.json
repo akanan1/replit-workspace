@@ -8,7 +8,8 @@
     "./fhir": "./src/fhir/index.ts",
     "./auth": "./src/auth/index.ts",
     "./document-reference": "./src/document-reference/index.ts",
-    "./athenahealth": "./src/providers/athenahealth/index.ts"
+    "./athenahealth": "./src/providers/athenahealth/index.ts",
+    "./epic": "./src/providers/epic/index.ts"
   },
   "dependencies": {
     "zod": "catalog:"
