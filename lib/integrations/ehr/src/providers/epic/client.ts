@@ -13,8 +13,9 @@ export function createEpicClient(config: EpicConfig): EpicEhrClient {
   const auth = new JwtBearerAuthProvider({
     tokenUrl: config.tokenUrl,
     clientId: config.clientId,
-    privateKey: config.privateKey,
     algorithm: config.algorithm,
+    privateKey: config.privateKey,
+    signer: config.signer,
     keyId: config.keyId,
     scope: config.scope,
     fetchImpl: config.fetchImpl,

@@ -25,6 +25,11 @@ export class JwtBearerAuthProvider implements TokenProvider {
   private inflight: Promise<AccessToken> | null = null;
 
   constructor(config: JwtBearerAuthConfig) {
+    if (!config.privateKey && !config.signer) {
+      throw new Error(
+        "JwtBearerAuthProvider requires either `privateKey` or `signer`.",
+      );
+    }
     this.config = config;
     this.fetchImpl = config.fetchImpl ?? fetch;
   }
@@ -50,7 +55,7 @@ export class JwtBearerAuthProvider implements TokenProvider {
     this.cached = null;
   }
 
-  private buildAssertion(): string {
+  private async buildAssertion(): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
     const lifetime =
       this.config.assertionLifetimeSeconds ??
@@ -71,8 +76,9 @@ export class JwtBearerAuthProvider implements TokenProvider {
     return signJwt({
       header,
       claims,
-      privateKey: this.config.privateKey,
       algorithm: this.config.algorithm,
+      privateKey: this.config.privateKey,
+      signer: this.config.signer,
     });
   }
 
@@ -80,7 +86,7 @@ export class JwtBearerAuthProvider implements TokenProvider {
     const body = new URLSearchParams();
     body.set("grant_type", "client_credentials");
     body.set("client_assertion_type", CLIENT_ASSERTION_TYPE);
-    body.set("client_assertion", this.buildAssertion());
+    body.set("client_assertion", await this.buildAssertion());
     if (this.config.scope) body.set("scope", this.config.scope);
 
     const res = await this.fetchImpl(this.config.tokenUrl, {

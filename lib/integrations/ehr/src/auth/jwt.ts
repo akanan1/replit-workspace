@@ -1,5 +1,5 @@
 import { sign as cryptoSign, type KeyObject } from "node:crypto";
-import type { JwtSigningAlgorithm } from "./types";
+import type { JwtSigner, JwtSigningAlgorithm } from "./types";
 
 interface AlgParams {
   hash: string;
@@ -29,12 +29,13 @@ function base64url(input: Buffer | string): string {
 export interface SignJwtOptions {
   header: Record<string, unknown>;
   claims: Record<string, unknown>;
-  privateKey: string | KeyObject;
   algorithm: JwtSigningAlgorithm;
+  // Provide exactly one of `privateKey` or `signer`.
+  privateKey?: string | KeyObject;
+  signer?: JwtSigner;
 }
 
-export function signJwt(opts: SignJwtOptions): string {
-  const params = ALG_PARAMS[opts.algorithm];
+export async function signJwt(opts: SignJwtOptions): Promise<string> {
   const headerJson = JSON.stringify({
     ...opts.header,
     alg: opts.algorithm,
@@ -43,15 +44,27 @@ export function signJwt(opts: SignJwtOptions): string {
   const claimsJson = JSON.stringify(opts.claims);
   const signingInput = `${base64url(headerJson)}.${base64url(claimsJson)}`;
 
-  const keyForSign = params.dsaEncoding
-    ? { key: opts.privateKey, dsaEncoding: params.dsaEncoding }
-    : opts.privateKey;
-
-  const signature = cryptoSign(
-    params.hash,
-    Buffer.from(signingInput),
-    keyForSign,
-  );
+  let signature: Buffer;
+  if (opts.signer) {
+    signature = await opts.signer(Buffer.from(signingInput), opts.algorithm);
+  } else if (opts.privateKey) {
+    signature = signLocally(signingInput, opts.privateKey, opts.algorithm);
+  } else {
+    throw new Error("signJwt requires either `privateKey` or `signer`.");
+  }
 
   return `${signingInput}.${base64url(signature)}`;
+}
+
+function signLocally(
+  signingInput: string,
+  privateKey: string | KeyObject,
+  algorithm: JwtSigningAlgorithm,
+): Buffer {
+  const params = ALG_PARAMS[algorithm];
+  const keyForSign = params.dsaEncoding
+    ? { key: privateKey, dsaEncoding: params.dsaEncoding }
+    : privateKey;
+
+  return cryptoSign(params.hash, Buffer.from(signingInput), keyForSign);
 }
