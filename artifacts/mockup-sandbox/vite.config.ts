@@ -2,7 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import fs from "node:fs";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
+
+// Load workspace-root .env into process.env for local dev. Production
+// deployments inject env vars directly, so a missing file is fine.
+const envPath = path.resolve(import.meta.dirname, "../../.env");
+if (fs.existsSync(envPath)) {
+  process.loadEnvFile(envPath);
+}
 
 const rawPort = process.env.PORT;
 

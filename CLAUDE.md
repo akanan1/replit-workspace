@@ -57,11 +57,12 @@ Generated files in `src/generated/` are clobbered on every codegen run — never
 - **pnpm only.** The root `preinstall` script deletes `package-lock.json`/`yarn.lock` and refuses non-pnpm installs.
 - **`minimumReleaseAge: 1440`** in `pnpm-workspace.yaml` blocks installing packages younger than 24 hours as a supply-chain defense. Do not disable it. To bypass for a specific trusted package, add it to `minimumReleaseAgeExclude`.
 - **Dependency versions** for shared frontend deps (react, vite, tailwind, drizzle-orm, zod, etc.) come from the `catalog:` block — bump them there, not in individual `package.json`s. React is pinned to `19.1.0` exactly because Expo requires it.
-- **Linux-x64 only.** `pnpm-workspace.yaml` overrides exclude all non-linux-x64 native binaries (esbuild, lightningcss, rollup, tailwindcss-oxide, ngrok). Local dev on macOS/Windows will need to override this temporarily.
+- **Cross-platform scripts.** `pnpm-workspace.yaml` sets `shellEmulator: true` so scripts using `VAR=val cmd && cmd2` syntax work on Windows. Use that pattern over `export VAR=val && ...`. Git Bash (`sh` on PATH) is also required for the root `preinstall` script and the post-merge hook.
 - **TypeScript:** workspace uses `"customConditions": ["workspace"]` so packages resolve to their TS sources. `tsc --build` is driven by the root `tsconfig.json` references; add new `lib/*` packages there.
-- **`PORT` is required, not defaulted** for both `api-server` and `mockup-sandbox` — they throw on startup if missing.
-- **`post-merge.sh`** runs `pnpm install --frozen-lockfile && pnpm --filter db push` automatically after `git merge` (configured via `.replit` `[postMerge]`).
+- **`PORT` is required, not defaulted** for both `api-server` and `mockup-sandbox` — they throw on startup if missing. Both currently default to `8080` via the workspace-root `.env`, so they cannot run simultaneously without overriding one.
+- **`.env` loading is per-app**, not automatic: `artifacts/api-server` loads it via `node --env-file=../../.env` in its `dev` script; `artifacts/mockup-sandbox`'s `vite.config.ts` calls `process.loadEnvFile()` because `--env-file` is not allowed in `NODE_OPTIONS`.
+- **`post-merge.sh`** runs `pnpm install --frozen-lockfile && pnpm --filter db push` automatically after `git merge`, wired via `.githooks/post-merge` + `git config core.hooksPath .githooks` (set per-clone — re-set after `git clone`).
 
 ## Pointers
 
-- See `replit.md` for the human-facing project README skeleton (currently mostly placeholder text).
+- See `README.md` for the human-facing project README skeleton (currently mostly placeholder text).
