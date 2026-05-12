@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "create-test-db": "tsx --env-file=../.env ./src/create-test-db.ts"
+    "create-test-db": "tsx --env-file=../.env ./src/create-test-db.ts",
+    "reset-dev-db": "tsx --env-file=../.env ./src/reset-dev-db.ts"
   },
   "dependencies": {
     "pg": "^8.20.0"

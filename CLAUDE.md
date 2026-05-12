@@ -20,7 +20,9 @@ Run from the workspace root unless noted.
 - `pnpm run typecheck` — full typecheck across all packages (`tsc --build` for libs, then per-artifact `tsc --noEmit`)
 - `pnpm run build` — typecheck + run every package's `build` script
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate the react-query client and Zod schemas after editing `openapi.yaml`; this also reruns `typecheck:libs`
-- `pnpm --filter @workspace/db run push` — apply schema changes to the dev DB (drizzle-kit). `push-force` skips prompts.
+- `pnpm --filter @workspace/db run generate --name <slug>` — generate a SQL migration file under `lib/db/migrations/` after editing a schema file. Commit the generated SQL.
+- `pnpm --filter @workspace/db run migrate` — apply pending migrations to the database pointed at by `DATABASE_URL`. This is the supported workflow; CI / deploy should use this.
+- `pnpm --filter @workspace/db run push` — drizzle-kit `push` is kept as an escape hatch for ad-hoc experimentation in scratch databases. Do not use it on the dev or prod DB — it leaves no record of what changed.
 
 There is no test runner wired up — the codebase relies on TypeScript + Zod for correctness.
 

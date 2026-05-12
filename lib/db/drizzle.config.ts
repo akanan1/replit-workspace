@@ -21,6 +21,7 @@ export default defineConfig({
   // Relative path so drizzle-kit's glob resolver works on both POSIX
   // and Windows (backslash-prefixed absolute paths trip it up).
   schema: "./src/schema/*.ts",
+  out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
     url: databaseUrl,

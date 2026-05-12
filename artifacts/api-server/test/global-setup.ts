@@ -26,12 +26,11 @@ export default async function setup(): Promise<() => void> {
   }
 
   // eslint-disable-next-line no-console
-  console.log("[integration] pushing schema to test database…");
-  execSync("pnpm --filter @workspace/db run push", {
+  console.log("[integration] running migrations against test database…");
+  execSync("pnpm --filter @workspace/db run migrate", {
     cwd: workspaceRoot,
-    // CI=true bypasses drizzle-kit's TTY prompt; DATABASE_URL override
-    // routes the push at the test database, not the dev one.
-    env: { ...process.env, DATABASE_URL: testUrl, CI: "true" },
+    // DATABASE_URL override routes the migrate at the test DB.
+    env: { ...process.env, DATABASE_URL: testUrl },
     stdio: "inherit",
   });
 
