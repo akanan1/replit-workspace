@@ -145,6 +145,33 @@ export interface PasswordResetConfirm {
   password: string;
 }
 
+export type AdminUserRole = (typeof AdminUserRole)[keyof typeof AdminUserRole];
+
+export const AdminUserRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName: string;
+  role: AdminUserRole;
+  createdAt: string;
+}
+
+export type UpdateUserRequestRole =
+  (typeof UpdateUserRequestRole)[keyof typeof UpdateUserRequestRole];
+
+export const UpdateUserRequestRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
+export interface UpdateUserRequest {
+  role?: UpdateUserRequestRole;
+}
+
 /**
  * @nullable
  */
@@ -177,6 +204,10 @@ export interface EhrPushResult {
   /** True when the push was synthesized locally because no EHR is configured. */
   mock: boolean;
 }
+
+export type ListUsers200 = {
+  data: AdminUser[];
+};
 
 export type ListAuditLogParams = {
   before?: string;

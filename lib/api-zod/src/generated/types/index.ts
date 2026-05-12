@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./adminUser";
+export * from "./adminUserRole";
 export * from "./auditLogEntry";
 export * from "./auditLogEntryMetadata";
 export * from "./authUser";
@@ -19,6 +21,7 @@ export * from "./listAuditLogParams";
 export * from "./listNotes200";
 export * from "./listNotesParams";
 export * from "./listPatients200";
+export * from "./listUsers200";
 export * from "./loginRequest";
 export * from "./note";
 export * from "./noteAuthor";
@@ -28,3 +31,5 @@ export * from "./passwordResetRequest";
 export * from "./patient";
 export * from "./signupRequest";
 export * from "./updateNoteRequest";
+export * from "./updateUserRequest";
+export * from "./updateUserRequestRole";

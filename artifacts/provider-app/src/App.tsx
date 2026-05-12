@@ -11,6 +11,7 @@ import { NewPatientPage } from "@/pages/NewPatient";
 import { NewNotePage } from "@/pages/NewNote";
 import { NotePage } from "@/pages/Note";
 import { AuditLogPage } from "@/pages/AuditLog";
+import { AdminUsersPage } from "@/pages/AdminUsers";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -69,6 +70,11 @@ export default function App() {
         <Route path="/audit-log">
           <RequireAuth>
             <AuditLogPage />
+          </RequireAuth>
+        </Route>
+        <Route path="/admin/users">
+          <RequireAuth>
+            <AdminUsersPage />
           </RequireAuth>
         </Route>
         <Route>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LogOut, ScrollText } from "lucide-react";
+import { LogOut, ScrollText, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
@@ -29,12 +29,20 @@ export function AppLayout({ children }: AppLayoutProps) {
           {user ? (
             <div className="flex items-center gap-2 text-sm">
               {user.role === "admin" ? (
-                <Link href="/audit-log">
-                  <Button variant="ghost" size="sm">
-                    <ScrollText className="h-4 w-4" />
-                    Audit log
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/admin/users">
+                    <Button variant="ghost" size="sm">
+                      <Users className="h-4 w-4" />
+                      Users
+                    </Button>
+                  </Link>
+                  <Link href="/audit-log">
+                    <Button variant="ghost" size="sm">
+                      <ScrollText className="h-4 w-4" />
+                      Audit log
+                    </Button>
+                  </Link>
+                </>
               ) : null}
               <span className="hidden text-(--color-muted-foreground) sm:inline">
                 {user.displayName}

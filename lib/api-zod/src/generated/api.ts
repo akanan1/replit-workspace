@@ -86,6 +86,41 @@ export const GetCurrentUserResponse = zod.object({
 });
 
 /**
+ * @summary List all users (admin only)
+ */
+export const ListUsersResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      email: zod.string(),
+      displayName: zod.string(),
+      role: zod.enum(["admin", "member"]),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * Currently only the `role` field is mutable. Self-demotion (an admin downgrading their own account) is refused so the system can't be left without any admin.
+ * @summary Update a user's role (admin only)
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateUserBody = zod.object({
+  role: zod.enum(["admin", "member"]).optional(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "member"]),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * Returns audit log entries, newest first. Cursor-pagination via `before` + `limit`. Optional filters on userId, resourceType, and action.
  * @summary List audit log entries
  */

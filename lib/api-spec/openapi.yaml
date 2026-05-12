@@ -18,6 +18,8 @@ tags:
     description: Clinical notes
   - name: audit
     description: Compliance + access logs
+  - name: admin
+    description: Administrative operations (role-gated)
 paths:
   /healthz:
     get:
@@ -133,6 +135,60 @@ paths:
                 $ref: "#/components/schemas/AuthUser"
         "401":
           description: Not signed in
+  /users:
+    get:
+      operationId: listUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Caller is not an admin
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [admin]
+      summary: Update a user's role (admin only)
+      description: >-
+        Currently only the `role` field is mutable. Self-demotion (an
+        admin downgrading their own account) is refused so the system
+        can't be left without any admin.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "400":
+          description: Validation failed
+        "403":
+          description: Caller is not an admin, or attempting to demote self
+        "404":
+          description: User not found
   /audit-log:
     get:
       operationId: listAuditLog
@@ -555,6 +611,28 @@ components:
           type: string
           minLength: 8
           maxLength: 200
+    AdminUser:
+      type: object
+      required: [id, email, displayName, role, createdAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        createdAt:
+          type: string
+          format: date-time
+    UpdateUserRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, member]
     AuditLogEntry:
       type: object
       required:
