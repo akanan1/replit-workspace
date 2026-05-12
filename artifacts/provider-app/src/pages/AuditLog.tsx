@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
-import { useListAuditLog } from "@workspace/api-client-react";
+import { ApiError, useListAuditLog } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -87,10 +87,7 @@ export function AuditLogPage() {
       {query.isPending ? (
         <p className="text-(--color-muted-foreground)">Loading…</p>
       ) : query.isError ? (
-        <p className="text-(--color-destructive)">
-          Couldn't load audit log.{" "}
-          {query.error instanceof Error ? query.error.message : ""}
-        </p>
+        <ErrorMessage error={query.error} />
       ) : query.data.data.length === 0 ? (
         <Card className="p-10 text-center text-(--color-muted-foreground)">
           No matching audit entries.
@@ -154,6 +151,25 @@ export function AuditLogPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function ErrorMessage({ error }: { error: unknown }) {
+  if (error instanceof ApiError && error.status === 403) {
+    return (
+      <Card className="p-10 text-center">
+        <h2 className="text-lg font-medium">Admins only</h2>
+        <p className="mt-2 text-sm text-(--color-muted-foreground)">
+          Your account doesn't have permission to view the audit log.
+        </p>
+      </Card>
+    );
+  }
+  return (
+    <p className="text-(--color-destructive)">
+      Couldn't load audit log.{" "}
+      {error instanceof Error ? error.message : ""}
+    </p>
   );
 }
 

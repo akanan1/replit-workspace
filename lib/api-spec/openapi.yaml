@@ -471,7 +471,7 @@ components:
           description: Medical record number. Must be unique.
     AuthUser:
       type: object
-      required: [id, email, displayName]
+      required: [id, email, displayName, role]
       properties:
         id:
           type: string
@@ -479,6 +479,9 @@ components:
           type: string
         displayName:
           type: string
+        role:
+          type: string
+          enum: [admin, member]
     LoginRequest:
       type: object
       required: [email, password]

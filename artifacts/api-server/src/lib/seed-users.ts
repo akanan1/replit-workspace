@@ -1,21 +1,32 @@
-import { getDb, usersTable } from "@workspace/db";
+import { getDb, usersTable, type UserRole } from "@workspace/db";
 import { hashPassword } from "./auth";
 import { logger } from "./logger";
 
 // Dev users seeded into an empty users table on first boot. Remove once a
 // real onboarding flow exists (or gate behind NODE_ENV !== "production").
-const DEMO_USERS = [
+//
+// alice is seeded as an admin so the audit-log UI is reachable from at
+// least one demo account; bob is a regular member.
+const DEMO_USERS: Array<{
+  id: string;
+  email: string;
+  displayName: string;
+  password: string;
+  role: UserRole;
+}> = [
   {
     id: "usr_demo_alice",
     email: "alice@halonote.example",
     displayName: "Dr. Alice Chen",
     password: "hunter2",
+    role: "admin",
   },
   {
     id: "usr_demo_bob",
     email: "bob@halonote.example",
     displayName: "Dr. Bob Park",
     password: "hunter2",
+    role: "member",
   },
 ];
 
@@ -30,6 +41,7 @@ export async function seedUsersIfEmpty(): Promise<void> {
       email: u.email,
       displayName: u.displayName,
       passwordHash: await hashPassword(u.password),
+      role: u.role,
     })),
   );
   await db.insert(usersTable).values(rows);

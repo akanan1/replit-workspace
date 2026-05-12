@@ -56,6 +56,7 @@ export const ConfirmPasswordResetResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   displayName: zod.string(),
+  role: zod.enum(["admin", "member"]),
 });
 
 /**
@@ -71,6 +72,7 @@ export const LoginResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   displayName: zod.string(),
+  role: zod.enum(["admin", "member"]),
 });
 
 /**
@@ -80,6 +82,7 @@ export const GetCurrentUserResponse = zod.object({
   id: zod.string(),
   email: zod.string(),
   displayName: zod.string(),
+  role: zod.enum(["admin", "member"]),
 });
 
 /**

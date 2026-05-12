@@ -9,6 +9,7 @@
 export * from "./auditLogEntry";
 export * from "./auditLogEntryMetadata";
 export * from "./authUser";
+export * from "./authUserRole";
 export * from "./createNoteRequest";
 export * from "./createPatientRequest";
 export * from "./ehrPushResult";

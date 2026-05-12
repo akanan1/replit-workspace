@@ -78,10 +78,18 @@ export interface CreatePatientRequest {
   mrn: string;
 }
 
+export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
+
+export const AuthUserRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
 export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  role: AuthUserRole;
 }
 
 export interface LoginRequest {

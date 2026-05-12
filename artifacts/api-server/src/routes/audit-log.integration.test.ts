@@ -60,12 +60,29 @@ describe("GET /audit-log (integration)", () => {
       email: EMAIL,
       password: PASSWORD,
       displayName: DISPLAY,
+      role: "admin",
     });
   });
 
   it("requires authentication", async () => {
     const res = await request(app).get("/api/audit-log");
     expect(res.status).toBe(401);
+  });
+
+  it("returns 403 to authenticated non-admins", async () => {
+    await createTestUser({
+      email: "member@halonote.test",
+      password: PASSWORD,
+      displayName: "Just A Member",
+      role: "member",
+    });
+    const agent = request.agent(app);
+    await agent
+      .post("/api/auth/login")
+      .send({ email: "member@halonote.test", password: PASSWORD });
+    const res = await agent.get("/api/audit-log");
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "forbidden" });
   });
 
   it("returns an empty page when no audited activity has happened yet", async () => {

@@ -99,6 +99,7 @@ router.post(
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        role: user.role,
       });
     } catch (err) {
       // 23505 unique_violation can race past the findUserByEmail check
@@ -191,6 +192,7 @@ router.post(
         id: user.id,
         email: user.email,
         displayName: user.displayName,
+        role: user.role,
       });
     } catch (err) {
       req.log.error({ err }, "Password reset confirm failed");
@@ -227,6 +229,7 @@ router.post(
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      role: user.role,
     });
   },
 );
@@ -254,6 +257,7 @@ router.get("/auth/me", requireAuth, (req, res) => {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
   });
 });
 

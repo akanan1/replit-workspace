@@ -28,12 +28,14 @@ export function AppLayout({ children }: AppLayoutProps) {
           </Link>
           {user ? (
             <div className="flex items-center gap-2 text-sm">
-              <Link href="/audit-log">
-                <Button variant="ghost" size="sm">
-                  <ScrollText className="h-4 w-4" />
-                  Audit log
-                </Button>
-              </Link>
+              {user.role === "admin" ? (
+                <Link href="/audit-log">
+                  <Button variant="ghost" size="sm">
+                    <ScrollText className="h-4 w-4" />
+                    Audit log
+                  </Button>
+                </Link>
+              ) : null}
               <span className="hidden text-(--color-muted-foreground) sm:inline">
                 {user.displayName}
               </span>

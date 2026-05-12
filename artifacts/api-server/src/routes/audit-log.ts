@@ -1,8 +1,13 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, lt, type SQL } from "drizzle-orm";
 import { auditLogTable, getDb, usersTable } from "@workspace/db";
+import { requireAdmin } from "../middlewares/require-admin";
 
 const router: IRouter = Router();
+
+// Gate every route in this file behind admin. requireAuth has already
+// run by the time we get here (mounted from the parent router).
+router.use(requireAdmin);
 
 const DEFAULT_PAGE_LIMIT = 50;
 const MAX_PAGE_LIMIT = 200;
