@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { closeDb } from "@workspace/db";
 import { seedPatientsIfEmpty } from "./lib/patients";
 import { seedUsersIfEmpty } from "./lib/seed-users";
+import { getInflightCount, waitForDrain } from "./lib/inflight";
 
 const rawPort = process.env["PORT"];
 
@@ -35,15 +36,32 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
+const SHUTDOWN_DRAIN_MS = Number(
+  process.env["SHUTDOWN_DRAIN_MS"] ?? "10000",
+);
+
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
-  logger.info({ signal }, "Shutting down");
+  logger.info(
+    { signal, inflight: getInflightCount() },
+    "Shutdown requested; refusing new connections and draining in-flight",
+  );
 
+  // Stop accepting new connections. Existing ones keep going until
+  // either they finish or waitForDrain times out.
   server.close((err) => {
     if (err) logger.error({ err }, "Error closing HTTP server");
   });
+
+  const drained = await waitForDrain(SHUTDOWN_DRAIN_MS);
+  if (!drained) {
+    logger.warn(
+      { inflight: getInflightCount(), waitedMs: SHUTDOWN_DRAIN_MS },
+      "Drain timeout — closing pool with requests still in flight",
+    );
+  }
 
   try {
     await closeDb();
@@ -51,8 +69,9 @@ async function shutdown(signal: string): Promise<void> {
     logger.error({ err }, "Error closing database pool");
   }
 
-  // Give in-flight handlers a moment, then exit hard.
-  setTimeout(() => process.exit(0), 5_000).unref();
+  logger.info("Shutdown complete");
+  // Tiny grace so log writes flush before exit.
+  setTimeout(() => process.exit(drained ? 0 : 1), 50).unref();
 }
 
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
