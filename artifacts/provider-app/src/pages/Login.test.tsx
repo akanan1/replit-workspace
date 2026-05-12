@@ -62,7 +62,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
-      expect(signInMock).toHaveBeenCalledWith("alice@x", "secret"),
+      expect(signInMock).toHaveBeenCalledWith("alice@x", "secret", undefined),
     );
     expect(navigateMock).toHaveBeenCalledWith("/");
   });

@@ -57,6 +57,10 @@ export const ConfirmPasswordResetResponse = zod.object({
   email: zod.string(),
   displayName: zod.string(),
   role: zod.enum(["admin", "member"]),
+  twoFactorEnabled: zod
+    .boolean()
+    .optional()
+    .describe("True when the user has TOTP 2FA enrolled."),
 });
 
 /**
@@ -73,6 +77,10 @@ export const LoginResponse = zod.object({
   email: zod.string(),
   displayName: zod.string(),
   role: zod.enum(["admin", "member"]),
+  twoFactorEnabled: zod
+    .boolean()
+    .optional()
+    .describe("True when the user has TOTP 2FA enrolled."),
 });
 
 /**
@@ -83,6 +91,10 @@ export const GetCurrentUserResponse = zod.object({
   email: zod.string(),
   displayName: zod.string(),
   role: zod.enum(["admin", "member"]),
+  twoFactorEnabled: zod
+    .boolean()
+    .optional()
+    .describe("True when the user has TOTP 2FA enrolled."),
 });
 
 /**

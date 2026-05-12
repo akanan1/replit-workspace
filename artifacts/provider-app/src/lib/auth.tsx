@@ -17,7 +17,11 @@ import {
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (
+    email: string,
+    password: string,
+    totpCode?: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   /** Re-fetch /auth/me. Use after a flow that minted a fresh session
    *  outside of signIn — signup, password-reset confirm, etc. */
@@ -47,10 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const me = await login({ email, password });
-    setUser(me);
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string, totpCode?: string) => {
+      // The generated `login` hook is typed against the LoginRequest
+      // schema, which doesn't include totpCode (it's optional and only
+      // exists for 2FA-enabled users). Cast to bypass — the server tolerates
+      // extra fields, and adding it to the spec just to satisfy the type
+      // would balloon this surface.
+      const me = await login({
+        email,
+        password,
+        ...(totpCode ? { totpCode } : {}),
+      } as Parameters<typeof login>[0]);
+      setUser(me);
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     // Best-effort: clear locally even if the server is unreachable. A

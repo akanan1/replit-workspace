@@ -17,6 +17,8 @@ import {
   SESSION_TTL_MS,
   verifyPassword,
 } from "../lib/auth";
+import { generateTotpSecret, verifyTotpCode } from "../lib/totp";
+import QRCode from "qrcode";
 import {
   CSRF_COOKIE,
   generateCsrfToken,
@@ -224,6 +226,22 @@ router.post(
       return;
     }
 
+    if (user.totpEnabledAt && user.totpSecret) {
+      // Password is valid but 2FA is required. Caller resubmits with
+      // `totpCode`. Returning 401 with a specific error makes the flow
+      // explicit on the wire — the frontend pivots to the 2FA prompt.
+      const totpCodeRaw = (req.body as { totpCode?: unknown }).totpCode;
+      const totpCode = typeof totpCodeRaw === "string" ? totpCodeRaw : "";
+      if (!totpCode) {
+        res.status(401).json({ error: "totp_required" });
+        return;
+      }
+      if (!verifyTotpCode(user.totpSecret, totpCode)) {
+        res.status(401).json({ error: "invalid_totp_code" });
+        return;
+      }
+    }
+
     await startSession(res, user.id);
     res.json({
       id: user.id,
@@ -233,6 +251,117 @@ router.post(
     });
   },
 );
+
+// ---------------------------------------------------------------------------
+// 2FA (TOTP) — RFC 6238, 6-digit codes, 30s period, ±1 window.
+//
+// Setup flow:
+//   1. POST /auth/2fa/setup        → caller authenticated; returns secret,
+//                                    otpauth URI, QR data URL. Persists the
+//                                    secret but leaves totpEnabledAt null.
+//   2. POST /auth/2fa/verify-setup → { code }; if valid, sets totpEnabledAt.
+//   3. POST /auth/2fa/disable      → { code }; clears both fields.
+// ---------------------------------------------------------------------------
+
+router.post("/auth/2fa/setup", requireAuth, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({ error: "unauthenticated" });
+    return;
+  }
+  if (user.totpEnabledAt) {
+    res.status(409).json({ error: "totp_already_enabled" });
+    return;
+  }
+
+  const handle = generateTotpSecret(user.email);
+  await getDb()
+    .update(usersTable)
+    .set({ totpSecret: handle.secret, totpEnabledAt: null })
+    .where(eq(usersTable.id, user.id));
+
+  // Generate a QR data URL so the frontend can `<img src={qr}>` without
+  // pulling in a QR library client-side. ~1 KB for a 6-digit TOTP URI.
+  const qrDataUrl = await QRCode.toDataURL(handle.uri, { margin: 0 });
+
+  res.json({
+    secret: handle.secret,
+    otpauthUri: handle.uri,
+    qrDataUrl,
+  });
+});
+
+router.post("/auth/2fa/verify-setup", requireAuth, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({ error: "unauthenticated" });
+    return;
+  }
+  const code = (req.body as { code?: unknown }).code;
+  if (typeof code !== "string" || code.trim().length === 0) {
+    res.status(400).json({ error: "missing_code" });
+    return;
+  }
+
+  // Re-read the user so we have the latest totpSecret (the auth-injected
+  // user may be stale — it comes from req.user populated by middleware).
+  const [fresh] = await getDb()
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id))
+    .limit(1);
+  if (!fresh || !fresh.totpSecret) {
+    res.status(409).json({ error: "totp_setup_not_started" });
+    return;
+  }
+  if (fresh.totpEnabledAt) {
+    res.status(409).json({ error: "totp_already_enabled" });
+    return;
+  }
+  if (!verifyTotpCode(fresh.totpSecret, code)) {
+    res.status(400).json({ error: "invalid_totp_code" });
+    return;
+  }
+
+  await getDb()
+    .update(usersTable)
+    .set({ totpEnabledAt: new Date() })
+    .where(eq(usersTable.id, fresh.id));
+  res.status(204).end();
+});
+
+router.post("/auth/2fa/disable", requireAuth, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({ error: "unauthenticated" });
+    return;
+  }
+  const code = (req.body as { code?: unknown }).code;
+  if (typeof code !== "string" || code.trim().length === 0) {
+    res.status(400).json({ error: "missing_code" });
+    return;
+  }
+
+  const [fresh] = await getDb()
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id))
+    .limit(1);
+  if (!fresh?.totpSecret || !fresh.totpEnabledAt) {
+    res.status(409).json({ error: "totp_not_enabled" });
+    return;
+  }
+  if (!verifyTotpCode(fresh.totpSecret, code)) {
+    res.status(400).json({ error: "invalid_totp_code" });
+    return;
+  }
+
+  await getDb()
+    .update(usersTable)
+    .set({ totpSecret: null, totpEnabledAt: null })
+    .where(eq(usersTable.id, fresh.id));
+  res.status(204).end();
+});
 
 router.post("/auth/logout", async (req, res) => {
   const sid = req.cookies?.[SESSION_COOKIE];
@@ -258,6 +387,7 @@ router.get("/auth/me", requireAuth, (req, res) => {
     email: user.email,
     displayName: user.displayName,
     role: user.role,
+    twoFactorEnabled: Boolean(user.totpEnabledAt),
   });
 });
 

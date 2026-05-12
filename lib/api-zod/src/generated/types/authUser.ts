@@ -12,4 +12,6 @@ export interface AuthUser {
   email: string;
   displayName: string;
   role: AuthUserRole;
+  /** True when the user has TOTP 2FA enrolled. */
+  twoFactorEnabled?: boolean;
 }

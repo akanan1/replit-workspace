@@ -12,6 +12,8 @@ export function LoginPage() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [totpRequired, setTotpRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,13 +23,34 @@ export function LoginPage() {
       setError("Enter your email and password.");
       return;
     }
+    if (totpRequired && !totpCode.trim()) {
+      setError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
-      await signIn(email.trim(), password);
+      await signIn(
+        email.trim(),
+        password,
+        totpRequired ? totpCode.trim() : undefined,
+      );
       navigate("/");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
+        const code =
+          err.data && typeof err.data === "object" && "error" in err.data
+            ? (err.data as { error: unknown }).error
+            : null;
+        if (code === "totp_required") {
+          setTotpRequired(true);
+          setError(null);
+          return;
+        }
+        if (code === "invalid_totp_code") {
+          setError("That code didn't match. Try the next one.");
+          return;
+        }
         setError("Invalid email or password.");
       } else if (err instanceof ApiError && err.status === 429) {
         const retryAfter = err.headers.get("retry-after");
@@ -83,6 +106,30 @@ export function LoginPage() {
                 disabled={submitting}
               />
             </div>
+            {totpRequired ? (
+              <div className="space-y-2">
+                <Label htmlFor="totp-code">Authenticator code</Label>
+                <Input
+                  id="totp-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(e) =>
+                    setTotpCode(e.target.value.replace(/[^\d]/g, ""))
+                  }
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  disabled={submitting}
+                />
+                <p className="text-xs text-(--color-muted-foreground)">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+              </div>
+            ) : null}
             {error ? (
               <p className="text-sm text-(--color-destructive)">{error}</p>
             ) : null}

@@ -50,6 +50,13 @@
       "when": 1778603051255,
       "tag": "0006_note_status_replaces",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778607436022,
+      "tag": "0007_add_totp_columns",
+      "breakpoints": true
     }
   ]
 }

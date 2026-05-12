@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LogOut, ScrollText, Users } from "lucide-react";
+import { LogOut, ScrollText, Settings as SettingsIcon, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
@@ -61,6 +61,11 @@ export function AppLayout({ children }: AppLayoutProps) {
               <span className="hidden text-(--color-muted-foreground) sm:inline">
                 {user.displayName}
               </span>
+              <Link href="/settings">
+                <Button variant="ghost" size="sm" aria-label="Settings">
+                  <SettingsIcon className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"

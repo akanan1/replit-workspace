@@ -639,6 +639,9 @@ components:
         role:
           type: string
           enum: [admin, member]
+        twoFactorEnabled:
+          type: boolean
+          description: True when the user has TOTP 2FA enrolled.
     LoginRequest:
       type: object
       required: [email, password]

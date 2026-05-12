@@ -16,6 +16,16 @@ export const usersTable = pgTable("users", {
   // Postgres-side this is just text — we narrow in TS so the API layer
   // can pattern-match exhaustively, but the DB will accept anything.
   role: text("role").$type<UserRole>().notNull().default("member"),
+  // TOTP secret in Base32 (RFC 4648). Nullable — only set after the
+  // user has confirmed a setup code matches. Stored at rest; rotate
+  // to encrypted-at-rest before enforcing 2FA org-wide.
+  totpSecret: text("totp_secret"),
+  // When the user finished 2FA enrollment. Nullable until enrolled.
+  // Login requires a fresh TOTP code whenever this is non-null.
+  totpEnabledAt: timestamp("totp_enabled_at", {
+    mode: "date",
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -44,6 +44,9 @@ const AuditLogPage = lazy(() =>
 const AdminUsersPage = lazy(() =>
   import("@/pages/AdminUsers").then((m) => ({ default: m.AdminUsersPage })),
 );
+const SettingsPage = lazy(() =>
+  import("@/pages/Settings").then((m) => ({ default: m.SettingsPage })),
+);
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -108,6 +111,11 @@ export default function App() {
           <Route path="/admin/users">
             <RequireAuth>
               <AdminUsersPage />
+            </RequireAuth>
+          </Route>
+          <Route path="/settings">
+            <RequireAuth>
+              <SettingsPage />
             </RequireAuth>
           </Route>
           <Route>
