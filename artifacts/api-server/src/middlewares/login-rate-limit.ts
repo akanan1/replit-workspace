@@ -1,4 +1,5 @@
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { PostgresRateLimitStore } from "../lib/postgres-rate-limit-store";
 
 const WINDOW_MS = 15 * 60 * 1000;
 
@@ -10,8 +11,8 @@ export const loginIpRateLimit = rateLimit({
   limit: 20,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  // A successful login is evidence of a real user; don't count it.
   skipSuccessfulRequests: true,
+  store: new PostgresRateLimitStore(),
   message: { error: "too_many_attempts" },
 });
 
@@ -23,6 +24,7 @@ export const loginEmailRateLimit = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  store: new PostgresRateLimitStore(),
   keyGenerator: (req) => {
     const body = req.body as { email?: unknown } | undefined;
     const raw = typeof body?.email === "string" ? body.email : "";
