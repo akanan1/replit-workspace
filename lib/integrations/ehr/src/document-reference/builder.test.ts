@@ -83,6 +83,31 @@ describe("buildDocumentReference", () => {
     expect(Date.parse(auto.date!)).toBeGreaterThan(Date.now() - 5000);
   });
 
+  it("includes a relatesTo replaces entry when input.relatesTo is provided", () => {
+    const doc = buildDocumentReference({
+      patient: "Patient/123",
+      content: { text: "amended" },
+      relatesTo: [{ target: "DocumentReference/original-abc" }],
+    });
+    expect(doc.relatesTo).toEqual([
+      {
+        code: "replaces",
+        target: { reference: "DocumentReference/original-abc" },
+      },
+    ]);
+  });
+
+  it("respects an explicit relatesTo code when set", () => {
+    const doc = buildDocumentReference({
+      patient: "Patient/123",
+      content: { text: "addendum" },
+      relatesTo: [
+        { code: "appends", target: "DocumentReference/original-abc" },
+      ],
+    });
+    expect(doc.relatesTo?.[0]?.code).toBe("appends");
+  });
+
   it("status/docStatus default to current/final but override is respected", () => {
     const d1 = buildDocumentReference({
       patient: "Patient/123",

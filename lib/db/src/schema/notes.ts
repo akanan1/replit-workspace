@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+
+export type NoteStatus = "active" | "entered-in-error";
 
 export const notesTable = pgTable("notes", {
   id: text("id")
@@ -21,6 +23,21 @@ export const notesTable = pgTable("notes", {
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
     .notNull()
     .defaultNow(),
+
+  // Clinical state. "entered-in-error" is the FHIR convention for a
+  // soft-deleted note — the row stays for audit + replaces-chain
+  // traceability, but the UI treats it as withdrawn.
+  status: text("status").$type<NoteStatus>().notNull().default("active"),
+
+  // Self-FK for FHIR's amendment model: a new note can `replace` an
+  // older one. The original is preserved untouched; the new note is
+  // its supersession. ON DELETE SET NULL because hard-deleting a
+  // replaced note would orphan the chain — but we don't hard-delete
+  // notes anyway, so this only fires if an admin SQLs a row out.
+  replacesNoteId: text("replaces_note_id").references(
+    (): AnyPgColumn => notesTable.id,
+    { onDelete: "set null" },
+  ),
 
   // EHR push tracking. Populated after a successful POST to the EHR.
   ehrProvider: text("ehr_provider"),

@@ -18,6 +18,16 @@ export interface Patient {
   mrn: string;
 }
 
+/**
+ * active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn.
+ */
+export type NoteStatus = (typeof NoteStatus)[keyof typeof NoteStatus];
+
+export const NoteStatus = {
+  active: "active",
+  "entered-in-error": "entered-in-error",
+} as const;
+
 export interface NoteAuthor {
   id: string;
   displayName: string;
@@ -31,6 +41,13 @@ export interface Note {
   /** Most recent edit; equal to createdAt when the note has not been edited. */
   updatedAt: string;
   author: NoteAuthor | null;
+  /** active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn. */
+  status: NoteStatus;
+  /**
+   * When set, this note supersedes the referenced one (FHIR DocumentReference relatesTo replaces).
+   * @nullable
+   */
+  replacesNoteId: string | null;
   /**
    * Provider that received this note, e.g. "athenahealth", "epic", "mock". Null until pushed.
    * @nullable
@@ -54,6 +71,8 @@ export interface CreateNoteRequest {
   patientId: string;
   /** @minLength 1 */
   body: string;
+  /** When set, the new note supersedes this one. The original is preserved with status active; downstream EHR pushes carry relatesTo replaces. */
+  replacesNoteId?: string;
 }
 
 export interface UpdateNoteRequest {

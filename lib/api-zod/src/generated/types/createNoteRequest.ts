@@ -10,4 +10,6 @@ export interface CreateNoteRequest {
   patientId: string;
   /** @minLength 1 */
   body: string;
+  /** When set, the new note supersedes this one. The original is preserved with status active; downstream EHR pushes carry relatesTo replaces. */
+  replacesNoteId?: string;
 }

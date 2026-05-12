@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Check, Loader2, Send } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListNotesQueryKey,
+  getNote,
   useCreateNote,
   useListPatients,
   useSendNoteToEhr,
+  type Note,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -23,6 +26,23 @@ type SendState =
   | { phase: "sent"; noteId: string; mock: boolean; provider: string }
   | { phase: "error"; message: string };
 
+function getReplacesQueryParam(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const id = new URLSearchParams(window.location.search).get("replaces");
+  return id?.trim() || undefined;
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function NewNotePage({ patientId }: NewNotePageProps) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -30,9 +50,43 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
   const createNote = useCreateNote();
   const sendNote = useSendNoteToEhr();
 
+  // Snapshot the ?replaces= id on mount so subsequent URL changes don't
+  // jump the page out of amend mode.
+  const replacesNoteId = useMemo(() => getReplacesQueryParam(), []);
+
+  // When amending, fetch the predecessor via the bare client (not the
+  // generated hook — its option types require a queryKey that we'd have
+  // to fabricate just to satisfy the type checker). A manual useEffect
+  // keeps the fetch conditional on amend mode and runs at most once.
+  const [predecessor, setPredecessor] = useState<Note | null>(null);
+  useEffect(() => {
+    if (!replacesNoteId) return;
+    let cancelled = false;
+    getNote(replacesNoteId)
+      .then((n) => {
+        if (!cancelled) setPredecessor(n);
+      })
+      .catch(() => {
+        // Soft-fail: amend banner is best-effort. Form still posts with
+        // replacesNoteId so the server enforces the chain.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [replacesNoteId]);
+
   const [body, setBody] = useState("");
+  const [bodyPrefilled, setBodyPrefilled] = useState(false);
   const [draftSavedId, setDraftSavedId] = useState<string | null>(null);
   const [sendState, setSendState] = useState<SendState>({ phase: "idle" });
+
+  // Prefill the body once the predecessor loads. Don't overwrite manual
+  // edits — only seed if the textarea is still empty.
+  useEffect(() => {
+    if (!predecessor || bodyPrefilled) return;
+    setBody(predecessor.body);
+    setBodyPrefilled(true);
+  }, [predecessor, bodyPrefilled]);
 
   const patient = patientsQuery.data?.data.find((p) => p.id === patientId);
 
@@ -45,10 +99,20 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
     });
   }
 
+  function createNotePayload() {
+    return {
+      data: {
+        patientId,
+        body,
+        ...(replacesNoteId ? { replacesNoteId } : {}),
+      },
+    };
+  }
+
   async function handleSaveDraft() {
     if (!body.trim()) return;
     try {
-      const note = await createNote.mutateAsync({ data: { patientId, body } });
+      const note = await createNote.mutateAsync(createNotePayload());
       setDraftSavedId(note.id);
       invalidateNotes();
     } catch (err) {
@@ -63,7 +127,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
     if (!body.trim() || !patient) return;
     setSendState({ phase: "saving" });
     try {
-      const note = await createNote.mutateAsync({ data: { patientId, body } });
+      const note = await createNote.mutateAsync(createNotePayload());
       setDraftSavedId(note.id);
       setSendState({ phase: "sending", noteId: note.id });
 
@@ -89,6 +153,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
   }
 
   const isBusy = sendState.phase === "saving" || sendState.phase === "sending";
+  const amending = Boolean(replacesNoteId);
 
   return (
     <div className="space-y-8">
@@ -103,7 +168,9 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       </div>
 
       <header className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight">New note</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {amending ? "Amend note" : "New note"}
+        </h1>
         {patientsQuery.isPending ? (
           <p className="text-(--color-muted-foreground)">Loading patient…</p>
         ) : patient ? (
@@ -120,6 +187,27 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
           </p>
         )}
       </header>
+
+      {amending ? (
+        <Card className="border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+          <p>
+            Amending the note{" "}
+            {predecessor ? (
+              <>
+                from{" "}
+                <span className="font-medium">
+                  {formatDate(predecessor.createdAt)}
+                </span>
+              </>
+            ) : (
+              <span className="font-mono text-xs">{replacesNoteId}</span>
+            )}
+            . The original stays on file unchanged; this note will be linked
+            via <code className="font-mono">relatesTo: replaces</code> when
+            sent to the EHR.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="space-y-3">
         <Label htmlFor="note-body" className="text-base">

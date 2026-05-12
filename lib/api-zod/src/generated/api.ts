@@ -195,6 +195,17 @@ export const ListNotesResponse = zod.object({
         }),
         zod.null(),
       ]),
+      status: zod
+        .enum(["active", "entered-in-error"])
+        .describe(
+          "active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn.",
+        ),
+      replacesNoteId: zod
+        .string()
+        .nullable()
+        .describe(
+          "When set, this note supersedes the referenced one (FHIR DocumentReference relatesTo replaces).",
+        ),
       ehrProvider: zod
         .string()
         .nullable()
@@ -230,6 +241,12 @@ export const ListNotesResponse = zod.object({
 export const CreateNoteBody = zod.object({
   patientId: zod.string(),
   body: zod.string().min(1),
+  replacesNoteId: zod
+    .string()
+    .optional()
+    .describe(
+      "When set, the new note supersedes this one. The original is preserved with status active; downstream EHR pushes carry relatesTo replaces.",
+    ),
 });
 
 /**
@@ -256,6 +273,17 @@ export const GetNoteResponse = zod.object({
     }),
     zod.null(),
   ]),
+  status: zod
+    .enum(["active", "entered-in-error"])
+    .describe(
+      "active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn.",
+    ),
+  replacesNoteId: zod
+    .string()
+    .nullable()
+    .describe(
+      "When set, this note supersedes the referenced one (FHIR DocumentReference relatesTo replaces).",
+    ),
   ehrProvider: zod
     .string()
     .nullable()
@@ -271,6 +299,14 @@ export const GetNoteResponse = zod.object({
     .string()
     .nullable()
     .describe("Last EHR push error message, if any."),
+});
+
+/**
+ * Marks the note status as entered-in-error. The row stays in the database for audit and amendment-chain integrity; the UI treats it as withdrawn. Clinical data is never hard-deleted.
+ * @summary Soft-delete a note
+ */
+export const DeleteNoteParams = zod.object({
+  id: zod.coerce.string(),
 });
 
 /**
@@ -302,6 +338,17 @@ export const UpdateNoteResponse = zod.object({
     }),
     zod.null(),
   ]),
+  status: zod
+    .enum(["active", "entered-in-error"])
+    .describe(
+      "active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn.",
+    ),
+  replacesNoteId: zod
+    .string()
+    .nullable()
+    .describe(
+      "When set, this note supersedes the referenced one (FHIR DocumentReference relatesTo replaces).",
+    ),
   ehrProvider: zod
     .string()
     .nullable()

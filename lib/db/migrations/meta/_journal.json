@@ -43,6 +43,13 @@
       "when": 1778602702935,
       "tag": "0005_user_role",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778603051255,
+      "tag": "0006_note_status_replaces",
+      "breakpoints": true
     }
   ]
 }

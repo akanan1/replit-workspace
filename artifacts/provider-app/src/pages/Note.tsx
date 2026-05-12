@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
-import { ArrowLeft, Loader2, Pencil, Send } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import {
+  ArrowLeft,
+  FilePlus2,
+  Loader2,
+  Pencil,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   getGetNoteQueryKey,
   getListNotesQueryKey,
+  useDeleteNote,
   useGetNote,
   useListPatients,
   useSendNoteToEhr,
@@ -36,10 +44,12 @@ function formatFullTimestamp(iso: string): string {
 
 export function NotePage({ patientId, noteId }: NotePageProps) {
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const patientsQuery = useListPatients();
   const noteQuery = useGetNote(noteId);
   const sendNote = useSendNoteToEhr();
   const updateNote = useUpdateNote();
+  const deleteNote = useDeleteNote();
 
   const patient = patientsQuery.data?.data.find((p) => p.id === patientId);
   const note = noteQuery.data;
@@ -94,6 +104,27 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
     }
   }
 
+  async function handleDelete() {
+    if (!note) return;
+    if (
+      !window.confirm(
+        "Mark this note as entered-in-error?\n\nThe note will be hidden from active workflows but kept on file for audit (clinical data is never hard-deleted).",
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteNote.mutateAsync({ id: note.id });
+      invalidateAllNoteQueries();
+      toast.success("Note marked entered-in-error");
+      navigate(`/patients/${patientId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't delete note");
+    }
+  }
+
+  const withdrawn = note?.status === "entered-in-error";
+
   return (
     <div className="space-y-8">
       <div>
@@ -117,7 +148,12 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
         <>
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-tight">Note</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-semibold tracking-tight">Note</h1>
+                {withdrawn ? (
+                  <StatusPill tone="failed">Entered in error</StatusPill>
+                ) : null}
+              </div>
               {patient ? (
                 <p className="text-(--color-muted-foreground)">
                   For{" "}
@@ -136,12 +172,42 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
                   Edited {formatFullTimestamp(note.updatedAt)}
                 </p>
               ) : null}
+              {note.replacesNoteId ? (
+                <p className="text-xs text-(--color-muted-foreground)">
+                  Amends{" "}
+                  <Link
+                    href={`/patients/${patientId}/notes/${note.replacesNoteId}`}
+                    className="font-mono underline-offset-2 hover:underline"
+                  >
+                    {note.replacesNoteId}
+                  </Link>
+                </p>
+              ) : null}
             </div>
-            {!editing ? (
-              <Button variant="outline" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" />
-                Edit
-              </Button>
+            {!editing && !withdrawn ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/patients/${patientId}/notes/new?replaces=${note.id}`}
+                >
+                  <Button variant="outline">
+                    <FilePlus2 className="h-4 w-4" />
+                    Amend
+                  </Button>
+                </Link>
+                <Button variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleDelete()}
+                  disabled={deleteNote.isPending}
+                  className="text-(--color-destructive)"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </div>
             ) : null}
           </header>
 
@@ -187,21 +253,28 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
               </div>
             </div>
           ) : (
-            <Card className="p-7">
+            <Card
+              className={cn(
+                "p-7",
+                withdrawn && "opacity-60",
+              )}
+            >
               <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
                 {note.body}
               </p>
             </Card>
           )}
 
-          <EhrSection
-            note={note}
-            onSend={handleSend}
-            sending={sendNote.isPending}
-            sendError={
-              sendNote.error instanceof Error ? sendNote.error.message : null
-            }
-          />
+          {!withdrawn ? (
+            <EhrSection
+              note={note}
+              onSend={handleSend}
+              sending={sendNote.isPending}
+              sendError={
+                sendNote.error instanceof Error ? sendNote.error.message : null
+              }
+            />
+          ) : null}
         </>
       )}
     </div>

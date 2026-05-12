@@ -7,6 +7,12 @@ import type { Patient } from "./patients";
 export interface EhrPushParams {
   note: { id: string; body: string };
   patient: Patient;
+  /**
+   * When set, the new DocumentReference carries
+   * relatesTo[{ code: "replaces", target: { reference: <ref> }}].
+   * Use the predecessor note's persisted ehrDocumentRef as the target.
+   */
+  replacesEhrRef?: string;
 }
 
 export interface EhrPushOutcome {
@@ -50,6 +56,11 @@ export async function pushNoteToEhr(
       title: `Clinical note ${params.note.id}`,
     },
     description: `${params.patient.lastName}, ${params.patient.firstName} — note ${params.note.id}`,
+    ...(params.replacesEhrRef
+      ? {
+          relatesTo: [{ code: "replaces" as const, target: params.replacesEhrRef }],
+        }
+      : {}),
   };
 
   const provider = resolveProvider();

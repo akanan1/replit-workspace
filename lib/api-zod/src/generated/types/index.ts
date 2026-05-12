@@ -22,6 +22,7 @@ export * from "./listPatients200";
 export * from "./loginRequest";
 export * from "./note";
 export * from "./noteAuthor";
+export * from "./noteStatus";
 export * from "./passwordResetConfirm";
 export * from "./passwordResetRequest";
 export * from "./patient";

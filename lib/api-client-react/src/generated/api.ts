@@ -1137,6 +1137,91 @@ export function useGetNote<
 }
 
 /**
+ * Marks the note status as entered-in-error. The row stays in the database for audit and amendment-chain integrity; the UI treats it as withdrawn. Clinical data is never hard-deleted.
+ * @summary Soft-delete a note
+ */
+export const getDeleteNoteUrl = (id: string) => {
+  return `/api/notes/${id}`;
+};
+
+export const deleteNote = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteNoteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteNoteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNote>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteNote>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteNote>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteNote(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteNote>>
+>;
+
+export type DeleteNoteMutationError = ErrorType<void>;
+
+/**
+ * @summary Soft-delete a note
+ */
+export const useDeleteNote = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNote>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteNote>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteNoteMutationOptions(options));
+};
+
+/**
  * Update the free-text body of an existing note. The patient, author, and EHR status are immutable through this endpoint — re-send to the EHR via POST /notes/{id}/send-to-ehr if you want downstream to reflect the edit.
  * @summary Edit a note's body
  */

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { NoteAuthor } from "./noteAuthor";
+import type { NoteStatus } from "./noteStatus";
 
 export interface Note {
   id: string;
@@ -15,6 +16,13 @@ export interface Note {
   /** Most recent edit; equal to createdAt when the note has not been edited. */
   updatedAt: Date;
   author: NoteAuthor | null;
+  /** active = current. entered-in-error = soft-deleted; the row stays for audit traceability but the UI treats it as withdrawn. */
+  status: NoteStatus;
+  /**
+   * When set, this note supersedes the referenced one (FHIR DocumentReference relatesTo replaces).
+   * @nullable
+   */
+  replacesNoteId: string | null;
   /**
    * Provider that received this note, e.g. "athenahealth", "epic", "mock". Null until pushed.
    * @nullable

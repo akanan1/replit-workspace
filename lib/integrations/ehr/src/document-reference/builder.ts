@@ -1,4 +1,9 @@
-import type { CodeableConcept, Coding, DocumentReference } from "../fhir/types";
+import type {
+  CodeableConcept,
+  Coding,
+  DocumentReference,
+  DocumentRelationshipType,
+} from "../fhir/types";
 
 export interface NoteContent {
   // Provide either raw text (will be base64-encoded) or pre-encoded base64.
@@ -25,6 +30,13 @@ export interface BuildDocumentReferenceInput {
   docStatus?: DocumentReference["docStatus"];
   // ISO 8601 timestamp; defaults to now.
   date?: string;
+  // FHIR amendment chain: when this note supersedes another, set
+  // relatesTo to the prior DocumentReference. Defaults to relationship
+  // "replaces" when only a reference is provided.
+  relatesTo?: Array<{
+    code?: DocumentRelationshipType;
+    target: string;
+  }>;
 }
 
 // LOINC 34109-9 — generic "Note". The previous default of 11506-3
@@ -100,6 +112,12 @@ export function buildDocumentReference(
   }
   if (input.encounter) {
     resource.context = { encounter: [{ reference: input.encounter }] };
+  }
+  if (input.relatesTo && input.relatesTo.length > 0) {
+    resource.relatesTo = input.relatesTo.map((r) => ({
+      code: r.code ?? "replaces",
+      target: { reference: r.target },
+    }));
   }
 
   return resource;

@@ -129,25 +129,47 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
           <EmptyNotes patientId={patientId} />
         ) : (
           <ul className="space-y-3">
-            {notes.map((note) => (
-              <li key={note.id}>
-                <Link href={`/patients/${patientId}/notes/${note.id}`}>
-                  <Card className="cursor-pointer p-5 transition-colors hover:bg-(--color-muted)">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="text-sm text-(--color-muted-foreground)">
-                          {formatTimestamp(note.createdAt)}
+            {notes.map((note) => {
+              const withdrawn = note.status === "entered-in-error";
+              return (
+                <li key={note.id}>
+                  <Link href={`/patients/${patientId}/notes/${note.id}`}>
+                    <Card
+                      className={cn(
+                        "cursor-pointer p-5 transition-colors hover:bg-(--color-muted)",
+                        withdrawn && "opacity-60",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="text-sm text-(--color-muted-foreground)">
+                            {formatTimestamp(note.createdAt)}
+                            {note.replacesNoteId ? (
+                              <span className="ml-2 text-xs">· amends prior</span>
+                            ) : null}
+                          </div>
+                          <p
+                            className={cn(
+                              "text-base leading-relaxed whitespace-pre-wrap break-words",
+                              withdrawn && "line-through",
+                            )}
+                          >
+                            {bodySnippet(note.body)}
+                          </p>
                         </div>
-                        <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
-                          {bodySnippet(note.body)}
-                        </p>
+                        {withdrawn ? (
+                          <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-800 ring-1 ring-inset ring-red-200">
+                            Entered in error
+                          </span>
+                        ) : (
+                          <EhrBadge note={note} />
+                        )}
                       </div>
-                      <EhrBadge note={note} />
-                    </div>
-                  </Card>
-                </Link>
-              </li>
-            ))}
+                    </Card>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

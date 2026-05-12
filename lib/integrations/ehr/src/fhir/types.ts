@@ -92,6 +92,15 @@ export interface OperationOutcome extends Resource {
   }>;
 }
 
+// DocumentReference.relatesTo.code per the FHIR R4 valueset.
+// "replaces" supersedes the target. "appends" extends without overwriting.
+// "transforms" / "signs" cover format-conversion and digital-signature cases.
+export type DocumentRelationshipType =
+  | "replaces"
+  | "transforms"
+  | "signs"
+  | "appends";
+
 export interface DocumentReference extends Resource {
   resourceType: "DocumentReference";
   status: "current" | "superseded" | "entered-in-error";
@@ -113,6 +122,10 @@ export interface DocumentReference extends Resource {
     facilityType?: CodeableConcept;
     practiceSetting?: CodeableConcept;
   };
+  relatesTo?: Array<{
+    code: DocumentRelationshipType;
+    target: Reference;
+  }>;
 }
 
 export interface Bundle<T extends Resource = Resource> extends Resource {

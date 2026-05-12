@@ -185,6 +185,111 @@ describe("notes routes (integration)", () => {
     expect(new Set(ids).size).toBe(5);
   });
 
+  it("DELETE /notes/:id soft-deletes (sets status=entered-in-error)", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const created = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ patientId: "pt_n1", body: "to be withdrawn" });
+    const noteId = (created.body as { id: string }).id;
+
+    const del = await agent
+      .delete(`/api/notes/${noteId}`)
+      .set("X-CSRF-Token", csrfToken);
+    expect(del.status).toBe(204);
+
+    const after = await agent.get(`/api/notes/${noteId}`);
+    expect(after.status).toBe(200);
+    expect(after.body.status).toBe("entered-in-error");
+    // Row is preserved — body unchanged, just status flipped.
+    expect(after.body.body).toBe("to be withdrawn");
+
+    // 404 for a genuinely missing id; idempotent for a now-soft-deleted one.
+    const missing = await agent
+      .delete("/api/notes/note_does_not_exist")
+      .set("X-CSRF-Token", csrfToken);
+    expect(missing.status).toBe(404);
+
+    const second = await agent
+      .delete(`/api/notes/${noteId}`)
+      .set("X-CSRF-Token", csrfToken);
+    expect(second.status).toBe(204);
+  });
+
+  it("POST /notes with replacesNoteId chains amendments", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const original = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ patientId: "pt_n1", body: "first draft" });
+    const originalId = (original.body as { id: string }).id;
+
+    const amended = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        patientId: "pt_n1",
+        body: "second draft, addressing earlier note",
+        replacesNoteId: originalId,
+      });
+    expect(amended.status).toBe(201);
+    expect(amended.body.replacesNoteId).toBe(originalId);
+
+    // The original is preserved unchanged.
+    const checkOriginal = await agent.get(`/api/notes/${originalId}`);
+    expect(checkOriginal.body.body).toBe("first draft");
+    expect(checkOriginal.body.status).toBe("active");
+  });
+
+  it("rejects replacement of a different patient's note", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const cross = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ patientId: "pt_n1", body: "for pt_n1" });
+    const noteId = (cross.body as { id: string }).id;
+
+    const bad = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        patientId: "pt_n2",
+        body: "wrong patient",
+        replacesNoteId: noteId,
+      });
+    expect(bad.status).toBe(400);
+  });
+
+  it("rejects replacement of a missing predecessor with 404", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const res = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        patientId: "pt_n1",
+        body: "no predecessor",
+        replacesNoteId: "note_nonexistent",
+      });
+    expect(res.status).toBe(404);
+  });
+
+  it("send-to-ehr on a withdrawn note 409s", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const created = await agent
+      .post("/api/notes")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ patientId: "pt_n1", body: "withdrawn before push" });
+    const noteId = (created.body as { id: string }).id;
+    await agent
+      .delete(`/api/notes/${noteId}`)
+      .set("X-CSRF-Token", csrfToken);
+
+    const push = await agent
+      .post(`/api/notes/${noteId}/send-to-ehr`)
+      .set("X-CSRF-Token", csrfToken);
+    expect(push.status).toBe(409);
+  });
+
   it("POST /notes/:id/send-to-ehr persists outcome on the note row", async () => {
     // Default EHR_MODE is unset → mock push, which is what we want here.
     const { agent, csrfToken } = await loginAgent();

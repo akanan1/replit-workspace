@@ -20,6 +20,8 @@ const noteSelect = {
   createdAt: notesTable.createdAt,
   updatedAt: notesTable.updatedAt,
   authorId: notesTable.authorId,
+  status: notesTable.status,
+  replacesNoteId: notesTable.replacesNoteId,
   ehrProvider: notesTable.ehrProvider,
   ehrDocumentRef: notesTable.ehrDocumentRef,
   ehrPushedAt: notesTable.ehrPushedAt,
@@ -34,6 +36,8 @@ type NoteRow = {
   createdAt: Date;
   updatedAt: Date;
   authorId: string | null;
+  status: "active" | "entered-in-error";
+  replacesNoteId: string | null;
   ehrProvider: string | null;
   ehrDocumentRef: string | null;
   ehrPushedAt: Date | null;
@@ -52,6 +56,8 @@ function serializeNote(row: NoteRow) {
       row.authorId && row.authorDisplayName
         ? { id: row.authorId, displayName: row.authorDisplayName }
         : null,
+    status: row.status,
+    replacesNoteId: row.replacesNoteId,
     ehrProvider: row.ehrProvider,
     ehrDocumentRef: row.ehrDocumentRef,
     ehrPushedAt: row.ehrPushedAt,
@@ -132,6 +138,34 @@ router.post("/notes", async (req, res) => {
     return;
   }
 
+  // If replacing, verify the predecessor exists and isn't itself entered-
+  // in-error. Replacing a withdrawn note would create a confusing chain.
+  if (parsed.data.replacesNoteId) {
+    const [predecessor] = await getDb()
+      .select({
+        id: notesTable.id,
+        status: notesTable.status,
+        patientId: notesTable.patientId,
+      })
+      .from(notesTable)
+      .where(eq(notesTable.id, parsed.data.replacesNoteId))
+      .limit(1);
+    if (!predecessor) {
+      res.status(404).json({ error: "predecessor_not_found" });
+      return;
+    }
+    if (predecessor.status === "entered-in-error") {
+      res
+        .status(409)
+        .json({ error: "predecessor_entered_in_error" });
+      return;
+    }
+    if (predecessor.patientId !== parsed.data.patientId) {
+      res.status(400).json({ error: "predecessor_patient_mismatch" });
+      return;
+    }
+  }
+
   try {
     const inserted = await getDb()
       .insert(notesTable)
@@ -139,6 +173,9 @@ router.post("/notes", async (req, res) => {
         patientId: parsed.data.patientId,
         body: parsed.data.body,
         authorId: author.id,
+        ...(parsed.data.replacesNoteId
+          ? { replacesNoteId: parsed.data.replacesNoteId }
+          : {}),
       })
       .returning();
     const note = inserted[0];
@@ -203,6 +240,24 @@ router.patch("/notes/:id", async (req, res) => {
   }
 });
 
+router.delete("/notes/:id", async (req, res) => {
+  const noteId = req.params.id;
+  // Soft delete — set status to entered-in-error. The row stays in the
+  // database for audit traceability + amendment-chain integrity. Returns
+  // 404 only when the row genuinely doesn't exist; re-deleting an
+  // already-entered-in-error note is idempotent.
+  const result = await getDb()
+    .update(notesTable)
+    .set({ status: "entered-in-error", updatedAt: new Date() })
+    .where(eq(notesTable.id, noteId))
+    .returning({ id: notesTable.id });
+  if (result.length === 0) {
+    res.status(404).json({ error: "note_not_found" });
+    return;
+  }
+  res.status(204).end();
+});
+
 router.post("/notes/:id/send-to-ehr", async (req, res) => {
   const noteId = req.params.id;
   const db = getDb();
@@ -217,6 +272,10 @@ router.post("/notes/:id/send-to-ehr", async (req, res) => {
     res.status(404).json({ error: "note_not_found" });
     return;
   }
+  if (note.status === "entered-in-error") {
+    res.status(409).json({ error: "note_entered_in_error" });
+    return;
+  }
 
   const patient = await findPatient(note.patientId);
   if (!patient) {
@@ -224,10 +283,26 @@ router.post("/notes/:id/send-to-ehr", async (req, res) => {
     return;
   }
 
+  // Look up the predecessor's EHR doc ref so we can stamp a relatesTo on
+  // the new push. Only meaningful when the predecessor has been pushed
+  // upstream; an amendment of a never-pushed note has nothing to point at.
+  let predecessorEhrRef: string | undefined;
+  if (note.replacesNoteId) {
+    const [predecessor] = await db
+      .select({ ehrDocumentRef: notesTable.ehrDocumentRef })
+      .from(notesTable)
+      .where(eq(notesTable.id, note.replacesNoteId))
+      .limit(1);
+    if (predecessor?.ehrDocumentRef) {
+      predecessorEhrRef = predecessor.ehrDocumentRef;
+    }
+  }
+
   try {
     const outcome = await pushNoteToEhr({
       note: { id: note.id, body: note.body },
       patient,
+      ...(predecessorEhrRef ? { replacesEhrRef: predecessorEhrRef } : {}),
     });
 
     await db
