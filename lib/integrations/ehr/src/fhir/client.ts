@@ -13,6 +13,16 @@ export type SearchParams = Record<
   string | number | boolean | Array<string | number | boolean>
 >;
 
+export interface UpdateOptions {
+  /**
+   * Optimistic-concurrency token. When set, the client sends an
+   * `If-Match: W/"<versionId>"` header. Epic enforces this on some
+   * resources; without it, concurrent edits race and the loser
+   * silently overwrites the winner.
+   */
+  versionId?: string;
+}
+
 const RESOURCE_TYPE_RE = /^[A-Z][A-Za-z]+$/;
 
 export class FhirError extends Error {
@@ -68,7 +78,10 @@ export class FhirClient {
     id: string,
   ): Promise<T> {
     assertResourceType(resourceType);
-    return this.request<T>("GET", `/${resourceType}/${encodeURIComponent(id)}`);
+    return this.request<T>(
+      "GET",
+      `/${resourceType}/${encodeURIComponent(id)}`,
+    );
   }
 
   async search<T extends Resource>(
@@ -94,12 +107,32 @@ export class FhirClient {
     return this.request<T>("POST", `/${resource.resourceType}`, resource);
   }
 
-  async update<T extends Resource & { id: string }>(resource: T): Promise<T> {
+  /**
+   * PUT a resource. Pass `options.versionId` to send `If-Match` for
+   * optimistic concurrency — either read the version off `meta.versionId`
+   * of a fresh GET, or use whatever value the server returned on the
+   * previous create/update.
+   *
+   * If `versionId` is omitted but the resource's own `meta.versionId`
+   * is set, we use that as a convenience — the common path in app code
+   * is `client.update({ ...readBack, body: edited })` which already
+   * carries the version. Pass `{ versionId: undefined }` explicitly to
+   * suppress the header for that one call.
+   */
+  async update<T extends Resource & { id: string }>(
+    resource: T,
+    options: UpdateOptions = {},
+  ): Promise<T> {
     assertResourceType(resource.resourceType);
+    const versionId =
+      "versionId" in options
+        ? options.versionId
+        : resource.meta?.versionId;
     return this.request<T>(
       "PUT",
       `/${resource.resourceType}/${encodeURIComponent(resource.id)}`,
       resource,
+      versionId ? { "if-match": formatETag(versionId) } : undefined,
     );
   }
 
@@ -107,11 +140,13 @@ export class FhirClient {
     method: string,
     path: string,
     body?: unknown,
+    extraHeaders?: Record<string, string>,
   ): Promise<T> {
     const token = await this.getToken();
     const headers: Record<string, string> = {
       accept: "application/fhir+json",
       authorization: `Bearer ${token}`,
+      ...extraHeaders,
     };
     if (body !== undefined) {
       headers["content-type"] = "application/fhir+json";
@@ -155,6 +190,15 @@ export class FhirClient {
 
     return (await res.json()) as T;
   }
+}
+
+// FHIR ETags are weak: W/"<versionId>". Be defensive — accept either a
+// bare versionId from the caller or an already-quoted ETag.
+function formatETag(versionId: string): string {
+  if (versionId.startsWith("W/") || versionId.startsWith('"')) {
+    return versionId;
+  }
+  return `W/"${versionId}"`;
 }
 
 function summarizeOutcome(outcome: OperationOutcome): string {

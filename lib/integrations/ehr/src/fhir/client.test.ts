@@ -5,6 +5,7 @@ interface FakeCall {
   url: string;
   method: string;
   body: string | null;
+  ifMatch: string | null;
 }
 
 function makeClient(opts: {
@@ -19,10 +20,12 @@ function makeClient(opts: {
   let i = 0;
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
+    const headers = new Headers(init?.headers);
     calls.push({
       url,
       method: init?.method ?? "GET",
       body: typeof init?.body === "string" ? init.body : null,
+      ifMatch: headers.get("if-match"),
     });
     const r = opts.responses[i++] ?? opts.responses[opts.responses.length - 1]!;
     return new Response(
@@ -175,7 +178,7 @@ describe("FhirClient operations", () => {
     expect((err as FhirError).message).toMatch(/Bad Gateway from edge/);
   });
 
-  it("update: requires id, PUTs to /:type/:id", async () => {
+  it("update: requires id, PUTs to /:type/:id, no If-Match by default", async () => {
     const { client, calls } = makeClient({
       responses: [{ body: { resourceType: "Patient", id: "p1" } }],
     });
@@ -185,5 +188,61 @@ describe("FhirClient operations", () => {
     } as { resourceType: "Patient"; id: string });
     expect(calls[0]!.method).toBe("PUT");
     expect(calls[0]!.url.endsWith("/Patient/p1")).toBe(true);
+    expect(calls[0]!.ifMatch).toBeNull();
+  });
+
+  it("update: sends If-Match when versionId is provided explicitly", async () => {
+    const { client, calls } = makeClient({
+      responses: [{ body: { resourceType: "Patient", id: "p1" } }],
+    });
+    await client.update(
+      { resourceType: "Patient", id: "p1" } as {
+        resourceType: "Patient";
+        id: string;
+      },
+      { versionId: "42" },
+    );
+    expect(calls[0]!.ifMatch).toBe('W/"42"');
+  });
+
+  it("update: derives versionId from resource.meta when options.versionId is omitted", async () => {
+    const { client, calls } = makeClient({
+      responses: [{ body: { resourceType: "Patient", id: "p1" } }],
+    });
+    await client.update({
+      resourceType: "Patient",
+      id: "p1",
+      meta: { versionId: "7" },
+    } as { resourceType: "Patient"; id: string; meta: { versionId: string } });
+    expect(calls[0]!.ifMatch).toBe('W/"7"');
+  });
+
+  it("update: explicit { versionId: undefined } suppresses the header even when meta has a value", async () => {
+    const { client, calls } = makeClient({
+      responses: [{ body: { resourceType: "Patient", id: "p1" } }],
+    });
+    await client.update(
+      {
+        resourceType: "Patient",
+        id: "p1",
+        meta: { versionId: "7" },
+      } as { resourceType: "Patient"; id: string; meta: { versionId: string } },
+      { versionId: undefined },
+    );
+    expect(calls[0]!.ifMatch).toBeNull();
+  });
+
+  it("update: passes already-quoted ETags through unchanged", async () => {
+    const { client, calls } = makeClient({
+      responses: [{ body: { resourceType: "Patient", id: "p1" } }],
+    });
+    await client.update(
+      { resourceType: "Patient", id: "p1" } as {
+        resourceType: "Patient";
+        id: string;
+      },
+      { versionId: 'W/"already-formatted"' },
+    );
+    expect(calls[0]!.ifMatch).toBe('W/"already-formatted"');
   });
 });
