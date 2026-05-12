@@ -281,6 +281,44 @@ paths:
                 $ref: "#/components/schemas/Patient"
         "409":
           description: A patient with this MRN already exists
+  /patients/sync:
+    post:
+      operationId: syncPatientFromEhr
+      tags: [patients]
+      summary: Pull a patient from the configured EHR
+      description: >-
+        Reads `Patient/{externalId}` from the EHR named by `EHR_MODE`
+        and upserts the local row keyed on MRN. Returns 201 when a new
+        row was inserted and 200 when an existing row was refreshed.
+        Mock mode (EHR_MODE unset) synthesizes demographics from the id
+        for local development.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncPatientRequest"
+      responses:
+        "200":
+          description: Existing patient refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncedPatient"
+        "201":
+          description: New patient inserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncedPatient"
+        "400":
+          description: External id missing or empty
+        "404":
+          description: The EHR returned no patient for this external id
+        "422":
+          description: The EHR record was missing fields HaloNote requires
+        "502":
+          description: The EHR returned an error
   /notes:
     get:
       operationId: listNotes
@@ -556,6 +594,38 @@ components:
           type: string
           minLength: 1
           description: Medical record number. Must be unique.
+    SyncPatientRequest:
+      type: object
+      required: [externalId]
+      properties:
+        externalId:
+          type: string
+          minLength: 1
+          description: The EHR-side patient id to read (e.g. FHIR Patient.id).
+    SyncedPatient:
+      type: object
+      required: [id, firstName, lastName, dateOfBirth, mrn, synced]
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+        mrn:
+          type: string
+        synced:
+          type: object
+          required: [provider, created]
+          properties:
+            provider:
+              type: string
+              enum: [athenahealth, epic, mock]
+            created:
+              type: boolean
+              description: True when this call inserted a new row; false when it refreshed.
     AuthUser:
       type: object
       required: [id, email, displayName, role]

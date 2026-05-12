@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
+import { eq } from "drizzle-orm";
 import { CreatePatientBody, ListPatientsResponse } from "@workspace/api-zod";
 import { getDb, patientsTable } from "@workspace/db";
 import { listPatients } from "../lib/patients";
+import { PatientSyncError, syncPatientFromEhr } from "../lib/patient-sync";
+import { PatientMappingError } from "@workspace/ehr";
 
 const router: IRouter = Router();
 
@@ -53,6 +56,99 @@ router.post("/patients", async (req, res) => {
       return;
     }
     req.log.error({ err }, "Failed to insert patient");
+    res.status(500).json({ error: "persistence_failed" });
+  }
+});
+
+router.post("/patients/sync", async (req, res) => {
+  const externalId =
+    typeof req.body === "object" && req.body !== null
+      ? (req.body as { externalId?: unknown }).externalId
+      : undefined;
+  if (typeof externalId !== "string" || externalId.trim().length === 0) {
+    res.status(400).json({ error: "missing_external_id" });
+    return;
+  }
+
+  let fields;
+  try {
+    fields = await syncPatientFromEhr(externalId.trim());
+  } catch (err) {
+    if (err instanceof PatientMappingError) {
+      req.log.warn({ err, externalId }, "EHR patient missing required fields");
+      res.status(422).json({ error: "ehr_patient_incomplete", detail: err.message });
+      return;
+    }
+    if (err instanceof PatientSyncError) {
+      req.log.warn({ err, externalId, status: err.status }, "EHR patient sync failed");
+      res.status(err.status).json({
+        error: err.status === 404 ? "ehr_patient_not_found" : "ehr_unavailable",
+      });
+      return;
+    }
+    req.log.error({ err, externalId }, "Unexpected error during patient sync");
+    res.status(500).json({ error: "internal_server_error" });
+    return;
+  }
+
+  const db = getDb();
+
+  try {
+    // Upsert keyed on MRN — that's the only natural identity we share
+    // with the EHR. If the row exists, refresh demographic fields in case
+    // they changed upstream.
+    const existing = await db
+      .select()
+      .from(patientsTable)
+      .where(eq(patientsTable.mrn, fields.mrn))
+      .limit(1);
+
+    if (existing[0]) {
+      const updated = await db
+        .update(patientsTable)
+        .set({
+          firstName: fields.firstName,
+          lastName: fields.lastName,
+          dateOfBirth: fields.dateOfBirth,
+        })
+        .where(eq(patientsTable.id, existing[0].id))
+        .returning();
+      const row = updated[0];
+      if (!row) throw new Error("Update returned no row");
+      res.json({
+        id: row.id,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        dateOfBirth: row.dateOfBirth,
+        mrn: row.mrn,
+        synced: { provider: fields.provider, created: false },
+      });
+      return;
+    }
+
+    const inserted = await db
+      .insert(patientsTable)
+      .values({
+        id: `pt_${randomUUID()}`,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        dateOfBirth: fields.dateOfBirth,
+        mrn: fields.mrn,
+      })
+      .returning();
+    const row = inserted[0];
+    if (!row) throw new Error("Insert returned no row");
+
+    res.status(201).json({
+      id: row.id,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      dateOfBirth: row.dateOfBirth,
+      mrn: row.mrn,
+      synced: { provider: fields.provider, created: true },
+    });
+  } catch (err) {
+    req.log.error({ err, externalId }, "Failed to upsert synced patient");
     res.status(500).json({ error: "persistence_failed" });
   }
 });

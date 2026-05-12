@@ -98,6 +98,71 @@ describe("POST /patients (integration)", () => {
     expect(second.body).toEqual({ error: "mrn_already_exists" });
   });
 
+  it("POST /patients/sync upserts a mock patient and returns 201", async () => {
+    // EHR_MODE unset = mock provider, so the route synthesizes
+    // demographics from the external id and persists them.
+    const { agent, csrfToken } = await loginAgent();
+    const res = await agent
+      .post("/api/patients/sync")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ externalId: "abc123" });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({
+      firstName: "Demo",
+      lastName: "Patient-abc123",
+      dateOfBirth: "1980-01-01",
+      mrn: "MRN-abc123",
+      synced: { provider: "mock", created: true },
+    });
+
+    const [row] = await getDb()
+      .select()
+      .from(patientsTable)
+      .where(eq(patientsTable.mrn, "MRN-abc123"));
+    expect(row?.id).toMatch(/^pt_/);
+  });
+
+  it("POST /patients/sync on a known MRN refreshes existing demographics and returns 200", async () => {
+    const { agent, csrfToken } = await loginAgent();
+
+    // First sync creates the row.
+    const first = await agent
+      .post("/api/patients/sync")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ externalId: "stable-1" });
+    expect(first.status).toBe(201);
+    const originalId = first.body.id as string;
+
+    // Mutate the row to simulate older demographics, then re-sync.
+    await getDb()
+      .update(patientsTable)
+      .set({ firstName: "Stale", lastName: "Name" })
+      .where(eq(patientsTable.id, originalId));
+
+    const second = await agent
+      .post("/api/patients/sync")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ externalId: "stable-1" });
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({
+      id: originalId,
+      firstName: "Demo",
+      lastName: "Patient-stable",
+      synced: { provider: "mock", created: false },
+    });
+  });
+
+  it("POST /patients/sync rejects empty externalId with 400", async () => {
+    const { agent, csrfToken } = await loginAgent();
+    const res = await agent
+      .post("/api/patients/sync")
+      .set("X-CSRF-Token", csrfToken)
+      .send({ externalId: "   " });
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "missing_external_id" });
+  });
+
   it("rejects an invalid dateOfBirth with 400", async () => {
     const { agent, csrfToken } = await loginAgent();
     const res = await agent

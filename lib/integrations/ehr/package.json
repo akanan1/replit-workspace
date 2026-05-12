@@ -8,6 +8,7 @@
     "./fhir": "./src/fhir/index.ts",
     "./auth": "./src/auth/index.ts",
     "./document-reference": "./src/document-reference/index.ts",
+    "./patient": "./src/patient/index.ts",
     "./athenahealth": "./src/providers/athenahealth/index.ts",
     "./epic": "./src/providers/epic/index.ts"
   },

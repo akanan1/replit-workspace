@@ -97,6 +97,38 @@ export interface CreatePatientRequest {
   mrn: string;
 }
 
+export interface SyncPatientRequest {
+  /**
+   * The EHR-side patient id to read (e.g. FHIR Patient.id).
+   * @minLength 1
+   */
+  externalId: string;
+}
+
+export type SyncedPatientSyncedProvider =
+  (typeof SyncedPatientSyncedProvider)[keyof typeof SyncedPatientSyncedProvider];
+
+export const SyncedPatientSyncedProvider = {
+  athenahealth: "athenahealth",
+  epic: "epic",
+  mock: "mock",
+} as const;
+
+export type SyncedPatientSynced = {
+  provider: SyncedPatientSyncedProvider;
+  /** True when this call inserted a new row; false when it refreshed. */
+  created: boolean;
+};
+
+export interface SyncedPatient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  mrn: string;
+  synced: SyncedPatientSynced;
+}
+
 export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
 
 export const AuthUserRole = {

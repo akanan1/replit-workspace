@@ -128,6 +128,32 @@ export interface DocumentReference extends Resource {
   }>;
 }
 
+// FHIR R4 HumanName (http://hl7.org/fhir/datatypes.html#HumanName). Only
+// the fields the patient-sync mapper actually reads.
+export interface HumanName {
+  use?: "usual" | "official" | "temp" | "nickname" | "anonymous" | "old" | "maiden";
+  text?: string;
+  family?: string;
+  given?: string[];
+  prefix?: string[];
+  suffix?: string[];
+}
+
+export interface Patient extends Resource {
+  resourceType: "Patient";
+  active?: boolean;
+  name?: HumanName[];
+  /** ISO 8601 date (YYYY-MM-DD). */
+  birthDate?: string;
+  gender?: "male" | "female" | "other" | "unknown";
+  identifier?: Array<
+    Identifier & {
+      type?: CodeableConcept;
+      use?: "usual" | "official" | "temp" | "secondary" | "old";
+    }
+  >;
+}
+
 export interface Bundle<T extends Resource = Resource> extends Resource {
   resourceType: "Bundle";
   type: string;

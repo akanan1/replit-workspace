@@ -190,6 +190,34 @@ export const CreatePatientBody = zod.object({
 });
 
 /**
+ * Reads `Patient/{externalId}` from the EHR named by `EHR_MODE` and upserts the local row keyed on MRN. Returns 201 when a new row was inserted and 200 when an existing row was refreshed. Mock mode (EHR_MODE unset) synthesizes demographics from the id for local development.
+ * @summary Pull a patient from the configured EHR
+ */
+
+export const SyncPatientFromEhrBody = zod.object({
+  externalId: zod
+    .string()
+    .min(1)
+    .describe("The EHR-side patient id to read (e.g. FHIR Patient.id)."),
+});
+
+export const SyncPatientFromEhrResponse = zod.object({
+  id: zod.string(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  dateOfBirth: zod.string(),
+  mrn: zod.string(),
+  synced: zod.object({
+    provider: zod.enum(["athenahealth", "epic", "mock"]),
+    created: zod
+      .boolean()
+      .describe(
+        "True when this call inserted a new row; false when it refreshed.",
+      ),
+  }),
+});
+
+/**
  * Returns notes the signed-in provider can see, newest first. When `patientId` is supplied, only notes for that patient are returned. Cursor-based pagination via `before` + `limit` — pass the previous response's `nextCursor` to fetch the next page.
  * @summary List clinical notes
  */

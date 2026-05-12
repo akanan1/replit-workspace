@@ -1,8 +1,89 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight, Plus } from "lucide-react";
-import { useListPatients } from "@workspace/api-client-react";
+import { ChevronRight, CloudDownload, Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  getListPatientsQueryKey,
+  useListPatients,
+  useSyncPatientFromEhr,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+function SyncFromEhrButton() {
+  const queryClient = useQueryClient();
+  const sync = useSyncPatientFromEhr();
+  const [open, setOpen] = useState(false);
+  const [externalId, setExternalId] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = externalId.trim();
+    if (!trimmed) return;
+    try {
+      const result = await sync.mutateAsync({ data: { externalId: trimmed } });
+      toast.success(
+        result.synced.created
+          ? `Imported ${result.firstName} ${result.lastName}`
+          : `Refreshed ${result.firstName} ${result.lastName}`,
+      );
+      setExternalId("");
+      setOpen(false);
+      void queryClient.invalidateQueries({
+        queryKey: getListPatientsQueryKey(),
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed");
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button size="lg" variant="outline" onClick={() => setOpen(true)}>
+        <CloudDownload className="h-4 w-4" aria-hidden="true" />
+        Sync from EHR
+      </Button>
+    );
+  }
+  return (
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className="flex items-end gap-2"
+    >
+      <div className="space-y-1">
+        <Label htmlFor="ehr-external-id" className="text-xs">
+          EHR Patient id
+        </Label>
+        <Input
+          id="ehr-external-id"
+          value={externalId}
+          onChange={(e) => setExternalId(e.target.value)}
+          placeholder="e.g. erXuFYUfucBZaryVksYEcMg3"
+          autoFocus
+          disabled={sync.isPending}
+        />
+      </div>
+      <Button type="submit" size="lg" disabled={sync.isPending || !externalId.trim()}>
+        {sync.isPending ? "Syncing…" : "Pull"}
+      </Button>
+      <Button
+        type="button"
+        size="lg"
+        variant="ghost"
+        onClick={() => {
+          setOpen(false);
+          setExternalId("");
+        }}
+        disabled={sync.isPending}
+      >
+        Cancel
+      </Button>
+    </form>
+  );
+}
 
 function formatDob(iso: string): string {
   const d = new Date(iso);
@@ -36,12 +117,15 @@ export function PatientsPage() {
             Select a patient to see their notes.
           </p>
         </div>
-        <Link href="/patients/new">
-          <Button size="lg" variant="outline">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add patient
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <SyncFromEhrButton />
+          <Link href="/patients/new">
+            <Button size="lg" variant="outline">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add patient
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {isPending ? (

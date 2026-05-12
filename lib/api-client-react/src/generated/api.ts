@@ -35,6 +35,8 @@ import type {
   PasswordResetRequest,
   Patient,
   SignupRequest,
+  SyncPatientRequest,
+  SyncedPatient,
   UpdateNoteRequest,
   UpdateUserRequest,
 } from "./api.schemas";
@@ -1033,6 +1035,93 @@ export const useCreatePatient = <
   TContext
 > => {
   return useMutation(getCreatePatientMutationOptions(options));
+};
+
+/**
+ * Reads `Patient/{externalId}` from the EHR named by `EHR_MODE` and upserts the local row keyed on MRN. Returns 201 when a new row was inserted and 200 when an existing row was refreshed. Mock mode (EHR_MODE unset) synthesizes demographics from the id for local development.
+ * @summary Pull a patient from the configured EHR
+ */
+export const getSyncPatientFromEhrUrl = () => {
+  return `/api/patients/sync`;
+};
+
+export const syncPatientFromEhr = async (
+  syncPatientRequest: SyncPatientRequest,
+  options?: RequestInit,
+): Promise<SyncedPatient> => {
+  return customFetch<SyncedPatient>(getSyncPatientFromEhrUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(syncPatientRequest),
+  });
+};
+
+export const getSyncPatientFromEhrMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPatientFromEhr>>,
+    TError,
+    { data: BodyType<SyncPatientRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncPatientFromEhr>>,
+  TError,
+  { data: BodyType<SyncPatientRequest> },
+  TContext
+> => {
+  const mutationKey = ["syncPatientFromEhr"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncPatientFromEhr>>,
+    { data: BodyType<SyncPatientRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncPatientFromEhr(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncPatientFromEhrMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncPatientFromEhr>>
+>;
+export type SyncPatientFromEhrMutationBody = BodyType<SyncPatientRequest>;
+export type SyncPatientFromEhrMutationError = ErrorType<void>;
+
+/**
+ * @summary Pull a patient from the configured EHR
+ */
+export const useSyncPatientFromEhr = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPatientFromEhr>>,
+    TError,
+    { data: BodyType<SyncPatientRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncPatientFromEhr>>,
+  TError,
+  { data: BodyType<SyncPatientRequest> },
+  TContext
+> => {
+  return useMutation(getSyncPatientFromEhrMutationOptions(options));
 };
 
 /**
