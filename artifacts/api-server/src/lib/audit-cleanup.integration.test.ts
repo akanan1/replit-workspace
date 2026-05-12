@@ -106,4 +106,39 @@ describe("audit log cleanup (integration)", () => {
     process.env["AUDIT_LOG_RETENTION_DAYS"] = "90";
     expect(_readRetentionDays()).toBe(90);
   });
+
+  it("returns null when another holder owns the advisory lock", async () => {
+    process.env["AUDIT_LOG_RETENTION_DAYS"] = "30";
+    const user = await createTestUser({
+      email: EMAIL,
+      password: "x".repeat(10),
+      displayName: "Audit Cleanup User",
+    });
+    await insertAuditAt(user.id, 200); // would be deleted normally
+
+    // Take the same advisory lock on a dedicated connection so it
+    // survives across the cleanup call. The lock-keys mirror what
+    // cleanupExpiredAuditLogs uses (ADVISORY_LOCK_KEY_HI/LO).
+    const HI = 0x6861_6c6f;
+    const LO = 0x6175_6469;
+    const { getPool } = await import("@workspace/db");
+    const holder = await getPool().connect();
+    try {
+      const acquired = await holder.query<{ ok: boolean }>(
+        `select pg_try_advisory_lock($1, $2) as ok`,
+        [HI, LO],
+      );
+      expect(acquired.rows[0]?.ok).toBe(true);
+
+      const result = await cleanupExpiredAuditLogs();
+      expect(result).toBeNull();
+
+      const rows = await getDb().select().from(auditLogTable);
+      // The row was NOT deleted because cleanup bailed.
+      expect(rows.length).toBe(1);
+    } finally {
+      await holder.query(`select pg_advisory_unlock($1, $2)`, [HI, LO]);
+      holder.release();
+    }
+  });
 });
