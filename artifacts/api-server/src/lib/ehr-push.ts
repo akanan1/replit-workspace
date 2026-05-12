@@ -67,8 +67,17 @@ export async function pushNoteToEhr(
 
   if (provider === "mock") {
     const syntheticId = `mock-${params.note.id}`;
+    // Log structural facts only — no note body, no patient name. The
+    // logger redacts `content.text` / `description` defensively too,
+    // but it's cheaper to just not pass them in.
     logger.info(
-      { docRef: baseInput, syntheticId },
+      {
+        noteId: params.note.id,
+        bodyLength: params.note.body.length,
+        patientRef: baseInput.patient,
+        replaces: params.replacesEhrRef ?? null,
+        syntheticId,
+      },
       "EHR push (mock) — EHR_MODE not set to a real provider; not posting upstream",
     );
     return {

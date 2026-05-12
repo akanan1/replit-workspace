@@ -24,11 +24,17 @@ const MAX_RETAINED = 100;
 class LogOnlyEmailSender implements EmailSender {
   readonly name = "log-only";
   async send(message: EmailMessage): Promise<void> {
+    // Subject + length only — never log the body. Password-reset
+    // links contain bearer tokens; the in-memory sink already keeps
+    // the full message available to tests via getLastEmailTo.
     logger.info(
-      { to: message.to, subject: message.subject },
+      {
+        to: message.to,
+        subject: message.subject,
+        bodyLength: message.body.length,
+      },
       "outbound email (dev sink)",
     );
-    logger.debug({ body: message.body }, "outbound email body");
     sentEmails.push(message);
     while (sentEmails.length > MAX_RETAINED) sentEmails.shift();
   }
