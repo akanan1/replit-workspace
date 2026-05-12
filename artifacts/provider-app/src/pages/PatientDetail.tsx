@@ -70,7 +70,7 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
           href="/"
           className="inline-flex items-center gap-1.5 text-sm text-(--color-muted-foreground) hover:text-(--color-foreground)"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           All patients
         </Link>
       </div>
@@ -104,7 +104,7 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
         {patient ? (
           <Link href={`/patients/${patient.id}/notes/new`}>
             <Button size="lg">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               New note
             </Button>
           </Link>
@@ -117,9 +117,11 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
         </h2>
 
         {notesQuery.isPending ? (
-          <p className="text-(--color-muted-foreground)">Loading notes…</p>
+          <p role="status" className="text-(--color-muted-foreground)">
+            Loading notes…
+          </p>
         ) : notesQuery.isError ? (
-          <p className="text-(--color-destructive)">
+          <p role="alert" className="text-(--color-destructive)">
             Couldn't load notes.{" "}
             {notesQuery.error instanceof Error
               ? notesQuery.error.message
@@ -128,7 +130,7 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
         ) : notes.length === 0 ? (
           <EmptyNotes patientId={patientId} />
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3" aria-label="Recent notes">
             {notes.map((note) => {
               const withdrawn = note.status === "entered-in-error";
               return (
@@ -181,7 +183,10 @@ function EmptyNotes({ patientId }: { patientId: string }) {
   const [, navigate] = useLocation();
   return (
     <Card className="flex flex-col items-center justify-center gap-3 p-10 text-center">
-      <FileText className="h-8 w-8 text-(--color-muted-foreground)" />
+      <FileText
+        className="h-8 w-8 text-(--color-muted-foreground)"
+        aria-hidden="true"
+      />
       <p className="text-(--color-muted-foreground)">No notes for this patient yet.</p>
       <Button
         variant="outline"

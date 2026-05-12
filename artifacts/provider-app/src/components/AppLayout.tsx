@@ -18,7 +18,18 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-(--color-border) bg-(--color-card) print:hidden">
+      {/* Skip link — visible only on focus, lets keyboard users bypass the
+          header nav and jump straight to the page content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-(--color-primary) focus:px-3 focus:py-2 focus:text-(--color-primary-foreground)"
+      >
+        Skip to main content
+      </a>
+      <header
+        className="border-b border-(--color-border) bg-(--color-card) print:hidden"
+        role="banner"
+      >
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link
             href="/"
@@ -27,18 +38,21 @@ export function AppLayout({ children }: AppLayoutProps) {
             HaloNote
           </Link>
           {user ? (
-            <div className="flex items-center gap-2 text-sm">
+            <nav
+              className="flex items-center gap-2 text-sm"
+              aria-label="Primary"
+            >
               {user.role === "admin" ? (
                 <>
                   <Link href="/admin/users">
                     <Button variant="ghost" size="sm">
-                      <Users className="h-4 w-4" />
+                      <Users className="h-4 w-4" aria-hidden="true" />
                       Users
                     </Button>
                   </Link>
                   <Link href="/audit-log">
                     <Button variant="ghost" size="sm">
-                      <ScrollText className="h-4 w-4" />
+                      <ScrollText className="h-4 w-4" aria-hidden="true" />
                       Audit log
                     </Button>
                   </Link>
@@ -53,14 +67,18 @@ export function AppLayout({ children }: AppLayoutProps) {
                 onClick={() => void handleSignOut()}
                 aria-label="Sign out"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4" aria-hidden="true" />
                 Sign out
               </Button>
-            </div>
+            </nav>
           ) : null}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-5xl flex-1 px-6 py-10 focus:outline-none"
+      >
         {children}
       </main>
     </div>

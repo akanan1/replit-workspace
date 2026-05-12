@@ -169,7 +169,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
           href={`/patients/${patientId}`}
           className="inline-flex items-center gap-1.5 text-sm text-(--color-muted-foreground) hover:text-(--color-foreground)"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to patient
         </Link>
       </div>
@@ -257,12 +257,12 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
         >
           {sendState.phase === "saving" || sendState.phase === "sending" ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               {sendState.phase === "saving" ? "Saving…" : "Sending…"}
             </>
           ) : (
             <>
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4" aria-hidden="true" />
               Save &amp; send to EHR
             </>
           )}
@@ -284,7 +284,7 @@ function AutosaveIndicator({
   if (status === "saving") {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         Saving…
       </span>
     );
@@ -292,7 +292,7 @@ function AutosaveIndicator({
   if (status === "saved" && lastSavedAt) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
-        <Cloud className="h-3.5 w-3.5" />
+        <Cloud className="h-3.5 w-3.5" aria-hidden="true" />
         Saved {formatRelative(lastSavedAt)}
       </span>
     );
@@ -310,7 +310,7 @@ function AutosaveIndicator({
         className="inline-flex items-center gap-1.5 text-xs text-(--color-destructive)"
         title={error ?? undefined}
       >
-        <CloudOff className="h-3.5 w-3.5" />
+        <CloudOff className="h-3.5 w-3.5" aria-hidden="true" />
         Couldn't autosave
       </span>
     );
@@ -341,13 +341,18 @@ function SendStatus({
 }) {
   if (state.phase === "error") {
     return (
-      <p className="text-sm text-(--color-destructive)">{state.message}</p>
+      <p role="alert" className="text-sm text-(--color-destructive)">
+        {state.message}
+      </p>
     );
   }
   if (state.phase === "sent") {
     return (
-      <p className="inline-flex items-center gap-1.5 text-sm text-(--color-foreground)">
-        <Check className="h-4 w-4" />
+      <p
+        role="status"
+        className="inline-flex items-center gap-1.5 text-sm text-(--color-foreground)"
+      >
+        <Check className="h-4 w-4" aria-hidden="true" />
         Sent to EHR ({state.provider}
         {state.mock ? " — mock" : ""}).
       </p>
@@ -355,8 +360,11 @@ function SendStatus({
   }
   if (state.phase === "idle" && draftSavedId) {
     return (
-      <p className="inline-flex items-center gap-1.5 text-sm text-(--color-foreground)">
-        <Check className="h-4 w-4" />
+      <p
+        role="status"
+        className="inline-flex items-center gap-1.5 text-sm text-(--color-foreground)"
+      >
+        <Check className="h-4 w-4" aria-hidden="true" />
         Draft saved.
       </p>
     );

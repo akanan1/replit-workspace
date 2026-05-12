@@ -38,20 +38,22 @@ export function PatientsPage() {
         </div>
         <Link href="/patients/new">
           <Button size="lg" variant="outline">
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
             Add patient
           </Button>
         </Link>
       </header>
 
       {isPending ? (
-        <p className="text-(--color-muted-foreground)">Loading patients…</p>
+        <p role="status" className="text-(--color-muted-foreground)">
+          Loading patients…
+        </p>
       ) : isError ? (
-        <p className="text-(--color-destructive)">
+        <p role="alert" className="text-(--color-destructive)">
           Couldn't load patients. {error instanceof Error ? error.message : ""}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-3" aria-label="Patients">
           {data.data.map((patient) => {
             const age = calculateAge(patient.dateOfBirth);
             return (
@@ -69,7 +71,10 @@ export function PatientsPage() {
                           {patient.mrn}
                         </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-(--color-muted-foreground)" />
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 text-(--color-muted-foreground)"
+                        aria-hidden="true"
+                      />
                     </div>
                   </Card>
                 </Link>

@@ -133,15 +133,17 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
           href={`/patients/${patientId}`}
           className="inline-flex items-center gap-1.5 text-sm text-(--color-muted-foreground) hover:text-(--color-foreground)"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to patient
         </Link>
       </div>
 
       {noteQuery.isPending ? (
-        <p className="text-(--color-muted-foreground)">Loading note…</p>
+        <p role="status" className="text-(--color-muted-foreground)">
+          Loading note…
+        </p>
       ) : noteQuery.isError || !note ? (
-        <p className="text-(--color-destructive)">
+        <p role="alert" className="text-(--color-destructive)">
           Couldn't load note.{" "}
           {noteQuery.error instanceof Error ? noteQuery.error.message : ""}
         </p>
@@ -188,19 +190,19 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
             {!editing && !withdrawn ? (
               <div className="flex items-center gap-2 print:hidden">
                 <Button variant="outline" onClick={() => window.print()}>
-                  <Printer className="h-4 w-4" />
+                  <Printer className="h-4 w-4" aria-hidden="true" />
                   Print
                 </Button>
                 <Link
                   href={`/patients/${patientId}/notes/new?replaces=${note.id}`}
                 >
                   <Button variant="outline">
-                    <FilePlus2 className="h-4 w-4" />
+                    <FilePlus2 className="h-4 w-4" aria-hidden="true" />
                     Amend
                   </Button>
                 </Link>
                 <Button variant="outline" onClick={() => setEditing(true)}>
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                   Edit
                 </Button>
                 <Button
@@ -209,7 +211,7 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
                   disabled={deleteNote.isPending}
                   className="text-(--color-destructive)"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                   Delete
                 </Button>
               </div>
@@ -356,12 +358,12 @@ function EhrSection({ note, onSend, sending, sendError }: EhrSectionProps) {
             <Button onClick={onSend} disabled={sending} size="lg">
               {sending ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Sending…
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4" aria-hidden="true" />
                   {hasError ? "Retry send to EHR" : "Send to EHR"}
                 </>
               )}
