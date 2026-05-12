@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Check, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Check, Cloud, CloudOff, Loader2, Send } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListNotesQueryKey,
   getNote,
-  useCreateNote,
   useListPatients,
   useSendNoteToEhr,
   type Note,
@@ -14,6 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  useNoteAutosave,
+  type AutosaveStatus,
+} from "@/lib/use-note-autosave";
 
 interface NewNotePageProps {
   patientId: string;
@@ -47,7 +50,6 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const patientsQuery = useListPatients();
-  const createNote = useCreateNote();
   const sendNote = useSendNoteToEhr();
 
   // Snapshot the ?replaces= id on mount so subsequent URL changes don't
@@ -77,8 +79,19 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
 
   const [body, setBody] = useState("");
   const [bodyPrefilled, setBodyPrefilled] = useState(false);
-  const [draftSavedId, setDraftSavedId] = useState<string | null>(null);
   const [sendState, setSendState] = useState<SendState>({ phase: "idle" });
+
+  const isBusyState =
+    sendState.phase === "saving" || sendState.phase === "sending";
+
+  // Debounced autosave. Disabled while a manual save / send is in flight
+  // so the explicit button click is what actually persists.
+  const autosave = useNoteAutosave({
+    body,
+    patientId,
+    replacesNoteId,
+    enabled: !isBusyState && sendState.phase !== "sent",
+  });
 
   // Prefill the body once the predecessor loads. Don't overwrite manual
   // edits — only seed if the textarea is still empty.
@@ -99,21 +112,10 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
     });
   }
 
-  function createNotePayload() {
-    return {
-      data: {
-        patientId,
-        body,
-        ...(replacesNoteId ? { replacesNoteId } : {}),
-      },
-    };
-  }
-
   async function handleSaveDraft() {
     if (!body.trim()) return;
     try {
-      const note = await createNote.mutateAsync(createNotePayload());
-      setDraftSavedId(note.id);
+      await autosave.flush();
       invalidateNotes();
     } catch (err) {
       setSendState({
@@ -127,14 +129,20 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
     if (!body.trim() || !patient) return;
     setSendState({ phase: "saving" });
     try {
-      const note = await createNote.mutateAsync(createNotePayload());
-      setDraftSavedId(note.id);
-      setSendState({ phase: "sending", noteId: note.id });
+      const noteId = await autosave.flush();
+      if (!noteId) {
+        setSendState({
+          phase: "error",
+          message: "Save failed.",
+        });
+        return;
+      }
+      setSendState({ phase: "sending", noteId });
 
-      const outcome = await sendNote.mutateAsync({ id: note.id });
+      const outcome = await sendNote.mutateAsync({ id: noteId });
       setSendState({
         phase: "sent",
-        noteId: note.id,
+        noteId,
         mock: outcome.mock,
         provider: outcome.provider,
       });
@@ -143,7 +151,6 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       // Short hold so the provider sees the success state before navigating away.
       setTimeout(() => navigate(`/patients/${patientId}`), 1100);
     } catch (err) {
-      // Still invalidate — the note row was created, only the push failed.
       invalidateNotes();
       setSendState({
         phase: "error",
@@ -152,7 +159,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
     }
   }
 
-  const isBusy = sendState.phase === "saving" || sendState.phase === "sending";
+  const isBusy = isBusyState;
   const amending = Boolean(replacesNoteId);
 
   return (
@@ -210,9 +217,16 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       ) : null}
 
       <div className="space-y-3">
-        <Label htmlFor="note-body" className="text-base">
-          Note
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="note-body" className="text-base">
+            Note
+          </Label>
+          <AutosaveIndicator
+            status={autosave.status}
+            lastSavedAt={autosave.lastSavedAt}
+            error={autosave.error}
+          />
+        </div>
         <Textarea
           id="note-body"
           value={body}
@@ -225,7 +239,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
         />
       </div>
 
-      <SendStatus state={sendState} draftSavedId={draftSavedId} />
+      <SendStatus state={sendState} draftSavedId={autosave.draftId} />
 
       <div className="flex items-center justify-end gap-3 border-t border-(--color-border) pt-6">
         <Button
@@ -256,6 +270,66 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       </div>
     </div>
   );
+}
+
+function AutosaveIndicator({
+  status,
+  lastSavedAt,
+  error,
+}: {
+  status: AutosaveStatus;
+  lastSavedAt: string | null;
+  error: string | null;
+}) {
+  if (status === "saving") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Saving…
+      </span>
+    );
+  }
+  if (status === "saved" && lastSavedAt) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
+        <Cloud className="h-3.5 w-3.5" />
+        Saved {formatRelative(lastSavedAt)}
+      </span>
+    );
+  }
+  if (status === "dirty") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
+        Unsaved changes
+      </span>
+    );
+  }
+  if (status === "error") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-xs text-(--color-destructive)"
+        title={error ?? undefined}
+      >
+        <CloudOff className="h-3.5 w-3.5" />
+        Couldn't autosave
+      </span>
+    );
+  }
+  return null;
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "just now";
+  const seconds = Math.floor((Date.now() - then) / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function SendStatus({

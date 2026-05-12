@@ -4,12 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test-utils/render";
 
 const createNoteMock = vi.fn();
+const updateNoteMock = vi.fn();
 const sendNoteMock = vi.fn();
 const listPatientsMock = vi.fn();
 
 vi.mock("@workspace/api-client-react", () => ({
   useCreateNote: () => ({
     mutateAsync: createNoteMock,
+    isPending: false,
+    error: null,
+  }),
+  useUpdateNote: () => ({
+    mutateAsync: updateNoteMock,
     isPending: false,
     error: null,
   }),
@@ -36,6 +42,7 @@ const PATIENT = {
 describe("NewNotePage", () => {
   beforeEach(() => {
     createNoteMock.mockReset();
+    updateNoteMock.mockReset();
     sendNoteMock.mockReset();
     listPatientsMock.mockReset();
     listPatientsMock.mockReturnValue({
