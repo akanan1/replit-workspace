@@ -1,0 +1,38 @@
+# Don't ship local state into the build context — slow + leaks.
+
+# Local installs and build output (re-created in the image).
+**/node_modules
+**/dist
+**/.tsbuildinfo
+**/.tsbuildinfo.tmp
+
+# pnpm bookkeeping.
+.pnpm-store
+.pnpm-state
+
+# Source control.
+.git
+.gitignore
+.gitattributes
+
+# Local environment files. CI / runtime supplies these via env vars.
+.env
+.env.*
+!.env.example
+
+# IDE / editor.
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Test artifacts.
+test-results
+playwright-report
+playwright/.cache
+coverage
+
+# Local-only scaffolding.
+*.log
+*.local
