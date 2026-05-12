@@ -36,3 +36,22 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+/* Print styles for clinical notes — strip UI chrome and lay out the
+   note body for paper. Hide elements with `print:hidden` (Tailwind),
+   reveal print-only blocks with `print:block`. */
+@media print {
+  @page {
+    margin: 0.75in;
+  }
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Make the note body more readable on paper than on screen. */
+  .print-note-body {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+}

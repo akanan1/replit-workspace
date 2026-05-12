@@ -5,6 +5,7 @@ import {
   FilePlus2,
   Loader2,
   Pencil,
+  Printer,
   Send,
   Trash2,
 } from "lucide-react";
@@ -127,7 +128,7 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="print:hidden">
         <Link
           href={`/patients/${patientId}`}
           className="inline-flex items-center gap-1.5 text-sm text-(--color-muted-foreground) hover:text-(--color-foreground)"
@@ -185,7 +186,11 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
               ) : null}
             </div>
             {!editing && !withdrawn ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 print:hidden">
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4" />
+                  Print
+                </Button>
                 <Link
                   href={`/patients/${patientId}/notes/new?replaces=${note.id}`}
                 >
@@ -255,11 +260,11 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
           ) : (
             <Card
               className={cn(
-                "p-7",
+                "p-7 print:border-0 print:p-0 print:shadow-none",
                 withdrawn && "opacity-60",
               )}
             >
-              <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
+              <p className="whitespace-pre-wrap break-words text-base leading-relaxed print-note-body">
                 {note.body}
               </p>
             </Card>
@@ -275,6 +280,19 @@ export function NotePage({ patientId, noteId }: NotePageProps) {
               }
             />
           ) : null}
+
+          <div className="hidden border-t border-(--color-border) pt-8 print:block">
+            <div className="grid grid-cols-2 gap-12">
+              <div>
+                <div className="border-b border-black pb-1" />
+                <p className="mt-1 text-xs">Provider signature</p>
+              </div>
+              <div>
+                <div className="border-b border-black pb-1" />
+                <p className="mt-1 text-xs">Date</p>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -304,7 +322,7 @@ function EhrSection({ note, onSend, sending, sendError }: EhrSectionProps) {
   const hasError = Boolean(note.ehrError);
 
   return (
-    <section className="space-y-3 border-t border-(--color-border) pt-6">
+    <section className="space-y-3 border-t border-(--color-border) pt-6 print:hidden">
       <h2 className="text-lg font-medium">EHR</h2>
 
       {sent ? (

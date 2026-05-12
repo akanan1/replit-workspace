@@ -18,7 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-(--color-border) bg-(--color-card)">
+      <header className="border-b border-(--color-border) bg-(--color-card) print:hidden">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <Link
             href="/"
