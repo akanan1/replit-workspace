@@ -13,7 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     // Components rely on browser globals; jsdom provides them. Keep
-    // tests pure / file-scoped — no DB, no real network.
-    exclude: ["**/node_modules/**", "**/dist/**"],
+    // tests pure / file-scoped — no DB, no real network. The e2e/
+    // directory runs under Playwright, not vitest.
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
   },
 });

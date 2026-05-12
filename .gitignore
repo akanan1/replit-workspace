@@ -48,6 +48,11 @@ Thumbs.db
 .cache/
 .local/
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
 # secrets
 .env
 .env.*
