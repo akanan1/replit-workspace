@@ -90,6 +90,34 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface SignupRequest {
+  email: string;
+  /**
+   * @minLength 8
+   * @maxLength 200
+   */
+  password: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  displayName: string;
+}
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordResetConfirm {
+  /** @minLength 1 */
+  token: string;
+  /**
+   * @minLength 8
+   * @maxLength 200
+   */
+  password: string;
+}
+
 export interface EhrPushResult {
   /** EHR provider name, e.g. "athenahealth", "epic", or "mock". */
   provider: string;

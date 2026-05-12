@@ -22,6 +22,13 @@
       "when": 1778573707323,
       "tag": "0002_notes_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778600632378,
+      "tag": "0003_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

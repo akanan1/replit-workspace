@@ -16,6 +16,49 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Create a new provider account and sign in
+ */
+export const signupBodyPasswordMin = 8;
+export const signupBodyPasswordMax = 200;
+
+export const signupBodyDisplayNameMax = 200;
+
+export const SignupBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(signupBodyPasswordMin).max(signupBodyPasswordMax),
+  displayName: zod.string().min(1).max(signupBodyDisplayNameMax),
+});
+
+/**
+ * Always returns 204 — we don't reveal whether the email belongs to a real account (user-enumeration defense).
+ * @summary Send a password-reset link to an email
+ */
+export const RequestPasswordResetBody = zod.object({
+  email: zod.string().email(),
+});
+
+/**
+ * @summary Set a new password using a reset token
+ */
+
+export const confirmPasswordResetBodyPasswordMin = 8;
+export const confirmPasswordResetBodyPasswordMax = 200;
+
+export const ConfirmPasswordResetBody = zod.object({
+  token: zod.string().min(1),
+  password: zod
+    .string()
+    .min(confirmPasswordResetBodyPasswordMin)
+    .max(confirmPasswordResetBodyPasswordMax),
+});
+
+export const ConfirmPasswordResetResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  displayName: zod.string(),
+});
+
+/**
  * @summary Sign in with email + password
  */
 
