@@ -62,7 +62,10 @@ async function buildAll() {
       "@swc/*",
       "@aws-sdk/*",
       "@azure/*",
-      "@opentelemetry/*",
+      // @opentelemetry/* is pulled in by @sentry/node and must be bundled
+      // alongside it — externalizing means the runtime image (which
+      // contains no node_modules) crashes at startup with ERR_MODULE_NOT_FOUND.
+      // Pure JS, no native bindings, safe to bundle.
       "@google-cloud/*",
       "@google/*",
       "googleapis",
