@@ -10,7 +10,45 @@ import { logger } from "../lib/logger";
  * to ship even if the bookkeeping DB hiccups. A production-grade
  * deployment may want sync writes or a write-behind queue with
  * durability guarantees, depending on compliance posture.
+ *
+ * Tests can `await waitForPendingAudits()` before truncating tables to
+ * avoid racing the FK insert into users against a TRUNCATE on users.
  */
+
+let pending = 0;
+const flushed: Array<() => void> = [];
+
+export function pendingAuditWrites(): number {
+  return pending;
+}
+
+export function waitForPendingAudits(timeoutMs = 2000): Promise<void> {
+  if (pending === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      logger.warn(
+        { pending, timeoutMs },
+        "waitForPendingAudits timed out",
+      );
+      resolve();
+    }, timeoutMs);
+    timer.unref();
+    flushed.push(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+function notifyIfDone(): void {
+  if (pending === 0) {
+    while (flushed.length) {
+      const fn = flushed.shift();
+      fn?.();
+    }
+  }
+}
+
 export const auditLog: RequestHandler = (req, res, next) => {
   // Capture intent before the route handler mutates anything.
   const action = inferAction(req.method, req.path);
@@ -22,7 +60,8 @@ export const auditLog: RequestHandler = (req, res, next) => {
     // Only log meaningful outcomes — skip aborted requests with no status.
     if (!res.statusCode) return;
 
-    void getDb()
+    pending++;
+    getDb()
       .insert(auditLogTable)
       .values({
         userId,
@@ -36,6 +75,10 @@ export const auditLog: RequestHandler = (req, res, next) => {
           { err, action, resourceType, resourceId },
           "audit log write failed",
         );
+      })
+      .finally(() => {
+        pending--;
+        notifyIfDone();
       });
   });
 

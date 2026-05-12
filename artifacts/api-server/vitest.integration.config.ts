@@ -10,6 +10,11 @@ export default defineConfig({
     // executing them in parallel would interleave TRUNCATEs and writes.
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
+    // Run test FILES sequentially within the single fork too. Without
+    // this, vitest still imports + executes multiple files concurrently
+    // inside the worker, and TRUNCATEs from one file deadlock against
+    // writes from another.
+    fileParallelism: false,
     // Schema push + scrypt password hashing pushes the slowest tests past
     // the default 5s timeout on cold runs.
     testTimeout: 20_000,

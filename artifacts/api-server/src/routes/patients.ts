@@ -44,11 +44,11 @@ router.post("/patients", async (req, res) => {
       mrn: patient.mrn,
     });
   } catch (err) {
-    // 23505 is Postgres' unique_violation. We treat any unique conflict
-    // on this table as "MRN already exists" since mrn is the only
-    // unique column besides the auto-generated id.
-    const pgErr = err as { code?: string };
-    if (pgErr.code === "23505") {
+    // 23505 = Postgres unique_violation. mrn is the only unique column
+    // on patients (the id is auto-generated), so we treat any 23505 as a
+    // duplicate MRN. Drizzle sometimes wraps the pg error in `cause`,
+    // so check both top-level and wrapped.
+    if (isUniqueViolation(err)) {
       res.status(409).json({ error: "mrn_already_exists" });
       return;
     }
@@ -56,5 +56,15 @@ router.post("/patients", async (req, res) => {
     res.status(500).json({ error: "persistence_failed" });
   }
 });
+
+function isUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: unknown; cause?: { code?: unknown } };
+  if (e.code === "23505") return true;
+  if (e.cause && typeof e.cause === "object" && e.cause.code === "23505") {
+    return true;
+  }
+  return false;
+}
 
 export default router;
