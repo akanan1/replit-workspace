@@ -73,7 +73,7 @@ router.post("/patients/sync", async (req, res) => {
 
   let fields;
   try {
-    fields = await syncPatientFromEhr(externalId.trim());
+    fields = await syncPatientFromEhr(externalId.trim(), req.user?.id);
   } catch (err) {
     if (err instanceof PatientMappingError) {
       req.log.warn({ err, externalId }, "EHR patient missing required fields");
@@ -164,7 +164,7 @@ router.get("/patients/:id/history", async (req, res) => {
     return;
   }
   try {
-    const history = await getPatientHistory(ehrPatientId);
+    const history = await getPatientHistory(ehrPatientId, req.user?.id);
     res.json(history);
   } catch (err) {
     if (err instanceof HistoryError) {

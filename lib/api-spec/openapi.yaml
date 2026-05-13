@@ -681,6 +681,75 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/NoteTemplate"
+  /auth/ehr/status:
+    get:
+      operationId: getEhrConnectionStatus
+      tags: [ehr-auth]
+      summary: Current EHR connection status for the signed-in provider
+      description: >-
+        Returns whether the caller has an active SMART OAuth connection
+        to each supported provider, plus the practitioner id we resolved
+        from the OAuth context and when the access token expires.
+      responses:
+        "200":
+          description: Status snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EhrConnectionStatus"
+  /auth/ehr/{provider}/start:
+    post:
+      operationId: startEhrOauth
+      tags: [ehr-auth]
+      summary: Begin a SMART OAuth handshake with the configured EHR
+      description: >-
+        Generates a PKCE-protected authorize URL the browser should
+        navigate to. The browser is expected to follow the URL — Athena
+        will redirect back to /api/auth/ehr/callback with a code, which
+        the server exchanges for tokens.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [athenahealth, epic]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartEhrOauthRequest"
+      responses:
+        "200":
+          description: Authorize URL to redirect the browser to
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorizeUrl]
+                properties:
+                  authorizeUrl:
+                    type: string
+        "400":
+          description: Unknown provider
+  /auth/ehr/{provider}:
+    delete:
+      operationId: disconnectEhr
+      tags: [ehr-auth]
+      summary: Drop the caller's SMART OAuth tokens for a provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [athenahealth, epic]
+      responses:
+        "204":
+          description: Connection deleted
+        "404":
+          description: No active connection for this provider
 components:
   schemas:
     HealthStatus:
@@ -1113,3 +1182,32 @@ components:
             type: string
           description: >-
             All of the caller's template ids in their new desired order.
+    EhrProviderConnection:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        practitionerId:
+          type: ["string", "null"]
+          description: Practitioner.id resolved from the SMART OAuth context.
+        scope:
+          type: ["string", "null"]
+        expiresAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    EhrConnectionStatus:
+      type: object
+      required: [athenahealth]
+      properties:
+        athenahealth:
+          $ref: "#/components/schemas/EhrProviderConnection"
+    StartEhrOauthRequest:
+      type: object
+      properties:
+        returnPath:
+          type: string
+          description: Same-origin path to navigate to after the callback completes (e.g. "/settings").

@@ -1,6 +1,7 @@
 import { FhirError } from "@workspace/ehr";
 import { getAthenahealthClient } from "./athena";
 import { getEpicClient } from "./epic";
+import { getAthenahealthClientForUser } from "./ehr-user-client";
 import { logger } from "./logger";
 import type { Patient } from "./patients";
 
@@ -13,6 +14,13 @@ export interface EhrPushParams {
    * Use the predecessor note's persisted ehrDocumentRef as the target.
    */
   replacesEhrRef?: string;
+  /**
+   * Author of the note. When the user has a SMART OAuth connection to
+   * the EHR, we push the DocumentReference through their per-user
+   * client so the resource carries their identity. Falls back to the
+   * org-level client_credentials (EHR_MODE) when there's no connection.
+   */
+  userId?: string;
 }
 
 export interface EhrPushOutcome {
@@ -62,6 +70,28 @@ export async function pushNoteToEhr(
         }
       : {}),
   };
+
+  // Prefer the user's SMART connection if they've completed OAuth.
+  if (params.userId) {
+    const userClient = await getAthenahealthClientForUser(params.userId);
+    if (userClient) {
+      try {
+        const created = await userClient.documentReference.push(baseInput);
+        const id = created.id ?? "unknown";
+        return {
+          provider: "athenahealth",
+          ehrDocumentRef: `DocumentReference/${id}`,
+          pushedAt: new Date(),
+          mock: false,
+        };
+      } catch (err) {
+        if (err instanceof FhirError) {
+          throw new EhrPushError(err.message, 502, err);
+        }
+        throw err;
+      }
+    }
+  }
 
   const provider = resolveProvider();
 

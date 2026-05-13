@@ -1,6 +1,7 @@
 import { FhirError, mapFhirPatient, type Patient as FhirPatient } from "@workspace/ehr";
 import { getAthenahealthClient } from "./athena";
 import { getEpicClient } from "./epic";
+import { getAthenahealthClientForUser } from "./ehr-user-client";
 import { logger } from "./logger";
 
 export interface SyncedPatientFields {
@@ -43,7 +44,32 @@ function resolveProvider(): "athenahealth" | "epic" | "mock" {
  */
 export async function syncPatientFromEhr(
   externalId: string,
+  userId?: string,
 ): Promise<SyncedPatientFields> {
+  // If the caller has connected Athena via SMART OAuth, prefer their
+  // per-user client — that's the production-shaped read path. The
+  // EHR_MODE fallback is only used when no OAuth connection exists,
+  // so dev and shared sandboxes still work.
+  if (userId) {
+    const userClient = await getAthenahealthClientForUser(userId);
+    if (userClient) {
+      try {
+        const fhirPatient = await userClient.fhir.read<FhirPatient>(
+          "Patient",
+          externalId,
+        );
+        const mapped = mapFhirPatient(fhirPatient);
+        return { ...mapped, provider: "athenahealth" };
+      } catch (err) {
+        if (err instanceof FhirError) {
+          const status = err.status === 404 ? 404 : 502;
+          throw new PatientSyncError(err.message, status, err);
+        }
+        throw err;
+      }
+    }
+  }
+
   const provider = resolveProvider();
 
   if (provider === "mock") {

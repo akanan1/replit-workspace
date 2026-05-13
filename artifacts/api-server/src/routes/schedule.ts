@@ -30,7 +30,7 @@ router.get("/schedule/today", async (req, res) => {
   }
 
   try {
-    const data = await getSchedule(practitionerId, date);
+    const data = await getSchedule(practitionerId, date, user.id);
     res.json({ data });
   } catch (err) {
     if (err instanceof ScheduleError) {

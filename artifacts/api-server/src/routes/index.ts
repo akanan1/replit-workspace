@@ -7,6 +7,7 @@ import auditLogRouter from "./audit-log";
 import usersRouter from "./users";
 import scheduleRouter from "./schedule";
 import templatesRouter from "./templates";
+import ehrOauthRouter from "./ehr-oauth";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireCsrf } from "../middlewares/require-csrf";
 import { auditLog } from "../middlewares/audit";
@@ -31,5 +32,6 @@ router.use(auditLogRouter);
 router.use(usersRouter);
 router.use(scheduleRouter);
 router.use(templatesRouter);
+router.use(ehrOauthRouter);
 
 export default router;

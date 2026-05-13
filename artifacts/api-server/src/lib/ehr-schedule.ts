@@ -2,9 +2,11 @@ import {
   FhirError,
   type Appointment as FhirAppointment,
   type Bundle,
+  type FhirClient,
 } from "@workspace/ehr";
 import { getAthenahealthClient } from "./athena";
 import { getEpicClient } from "./epic";
+import { getAthenahealthClientForUser } from "./ehr-user-client";
 import { logger } from "./logger";
 
 export interface ScheduledAppointment {
@@ -93,23 +95,42 @@ function mapAppointment(appt: FhirAppointment): ScheduledAppointment | null {
 export async function getSchedule(
   practitionerId: string,
   dateIso?: string,
+  userId?: string,
 ): Promise<ScheduledAppointment[]> {
   const day = parseLocalDate(dateIso);
-  const provider = resolveProvider();
-
-  if (provider === "mock") {
-    return buildMockSchedule(practitionerId, day);
-  }
-
   const start = startOfDayIso(day);
   const end = startOfDayIso(addDays(day, 1));
 
+  // Per-user SMART connection wins: we want the schedule scoped through
+  // the provider's own EHR identity. Fall back to org-level
+  // client_credentials (EHR_MODE) only when the user hasn't connected
+  // yet, and to mock if nothing else is configured.
+  if (userId) {
+    const userClient = await getAthenahealthClientForUser(userId);
+    if (userClient) {
+      return runFhirSearch(userClient.fhir, practitionerId, start, end);
+    }
+  }
+
+  const provider = resolveProvider();
+  if (provider === "mock") {
+    return buildMockSchedule(practitionerId, day);
+  }
+  const client =
+    provider === "athenahealth" ? getAthenahealthClient() : getEpicClient();
+  return runFhirSearch(client.fhir, practitionerId, start, end);
+}
+
+async function runFhirSearch(
+  fhir: FhirClient,
+  practitionerId: string,
+  start: string,
+  end: string,
+): Promise<ScheduledAppointment[]> {
   try {
-    const client =
-      provider === "athenahealth" ? getAthenahealthClient() : getEpicClient();
     // FHIR Appointment search supports `date=ge<>` + `date=lt<>` for
     // a range; `practitioner=<id>` filters to a specific provider.
-    const bundle = await client.fhir.search<FhirAppointment>("Appointment", {
+    const bundle = await fhir.search<FhirAppointment>("Appointment", {
       practitioner: practitionerId,
       date: [`ge${start}`, `lt${end}`],
       _count: 100,

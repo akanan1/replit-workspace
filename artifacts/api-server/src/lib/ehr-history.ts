@@ -3,10 +3,12 @@ import {
   type AllergyIntolerance as FhirAllergyIntolerance,
   type Bundle,
   type Condition as FhirCondition,
+  type FhirClient,
   type MedicationRequest as FhirMedicationRequest,
 } from "@workspace/ehr";
 import { getAthenahealthClient } from "./athena";
 import { getEpicClient } from "./epic";
+import { getAthenahealthClientForUser } from "./ehr-user-client";
 import { logger } from "./logger";
 
 export interface PatientHistoryProblem {
@@ -63,31 +65,42 @@ function resolveProvider(): "athenahealth" | "epic" | "mock" {
  */
 export async function getPatientHistory(
   ehrPatientId: string,
+  userId?: string,
 ): Promise<PatientHistory> {
+  if (userId) {
+    const userClient = await getAthenahealthClientForUser(userId);
+    if (userClient) {
+      return runHistoryFetch(userClient.fhir, ehrPatientId);
+    }
+  }
   const provider = resolveProvider();
-
   if (provider === "mock") {
     return buildMockHistory(ehrPatientId);
   }
+  const client =
+    provider === "athenahealth" ? getAthenahealthClient() : getEpicClient();
+  return runHistoryFetch(client.fhir, ehrPatientId);
+}
 
+async function runHistoryFetch(
+  fhir: FhirClient,
+  ehrPatientId: string,
+): Promise<PatientHistory> {
   try {
-    const client =
-      provider === "athenahealth" ? getAthenahealthClient() : getEpicClient();
-
     // Three parallel searches; each one is its own FHIR call but the
     // server doesn't pay for sequencing them.
     const [conditions, meds, allergies] = await Promise.all([
-      client.fhir.search<FhirCondition>("Condition", {
+      fhir.search<FhirCondition>("Condition", {
         patient: ehrPatientId,
         "clinical-status": "active",
         _count: 50,
       }),
-      client.fhir.search<FhirMedicationRequest>("MedicationRequest", {
+      fhir.search<FhirMedicationRequest>("MedicationRequest", {
         patient: ehrPatientId,
         status: "active",
         _count: 50,
       }),
-      client.fhir.search<FhirAllergyIntolerance>("AllergyIntolerance", {
+      fhir.search<FhirAllergyIntolerance>("AllergyIntolerance", {
         patient: ehrPatientId,
         _count: 50,
       }),

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EhrConnectionSection } from "@/components/EhrConnectionSection";
 import { TemplatesSection } from "@/components/TemplatesSection";
 
 interface SetupResponse {
@@ -37,6 +38,8 @@ export function SettingsPage() {
           {user?.email}
         </p>
       </header>
+
+      <EhrConnectionSection />
 
       <TemplatesSection />
 

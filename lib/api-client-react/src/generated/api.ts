@@ -22,6 +22,7 @@ import type {
   CreateNoteRequest,
   CreatePatientRequest,
   CreateTemplateRequest,
+  EhrConnectionStatus,
   EhrPushResult,
   GetTodaySchedule200,
   GetTodayScheduleParams,
@@ -44,6 +45,8 @@ import type {
   ReorderTemplatesRequest,
   ResetTemplates200,
   SignupRequest,
+  StartEhrOauth200,
+  StartEhrOauthRequest,
   SyncPatientRequest,
   SyncedPatient,
   UpdateNoteRequest,
@@ -2337,4 +2340,253 @@ export const useResetTemplates = <
   TContext
 > => {
   return useMutation(getResetTemplatesMutationOptions(options));
+};
+
+/**
+ * Returns whether the caller has an active SMART OAuth connection to each supported provider, plus the practitioner id we resolved from the OAuth context and when the access token expires.
+ * @summary Current EHR connection status for the signed-in provider
+ */
+export const getGetEhrConnectionStatusUrl = () => {
+  return `/api/auth/ehr/status`;
+};
+
+export const getEhrConnectionStatus = async (
+  options?: RequestInit,
+): Promise<EhrConnectionStatus> => {
+  return customFetch<EhrConnectionStatus>(getGetEhrConnectionStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEhrConnectionStatusQueryKey = () => {
+  return [`/api/auth/ehr/status`] as const;
+};
+
+export const getGetEhrConnectionStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEhrConnectionStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEhrConnectionStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetEhrConnectionStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getEhrConnectionStatus>>
+  > = ({ signal }) => getEhrConnectionStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEhrConnectionStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEhrConnectionStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEhrConnectionStatus>>
+>;
+export type GetEhrConnectionStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Current EHR connection status for the signed-in provider
+ */
+
+export function useGetEhrConnectionStatus<
+  TData = Awaited<ReturnType<typeof getEhrConnectionStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEhrConnectionStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEhrConnectionStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Generates a PKCE-protected authorize URL the browser should navigate to. The browser is expected to follow the URL — Athena will redirect back to /api/auth/ehr/callback with a code, which the server exchanges for tokens.
+ * @summary Begin a SMART OAuth handshake with the configured EHR
+ */
+export const getStartEhrOauthUrl = (provider: "athenahealth" | "epic") => {
+  return `/api/auth/ehr/${provider}/start`;
+};
+
+export const startEhrOauth = async (
+  provider: "athenahealth" | "epic",
+  startEhrOauthRequest?: StartEhrOauthRequest,
+  options?: RequestInit,
+): Promise<StartEhrOauth200> => {
+  return customFetch<StartEhrOauth200>(getStartEhrOauthUrl(provider), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(startEhrOauthRequest),
+  });
+};
+
+export const getStartEhrOauthMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startEhrOauth>>,
+    TError,
+    { provider: "athenahealth" | "epic"; data: BodyType<StartEhrOauthRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startEhrOauth>>,
+  TError,
+  { provider: "athenahealth" | "epic"; data: BodyType<StartEhrOauthRequest> },
+  TContext
+> => {
+  const mutationKey = ["startEhrOauth"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startEhrOauth>>,
+    { provider: "athenahealth" | "epic"; data: BodyType<StartEhrOauthRequest> }
+  > = (props) => {
+    const { provider, data } = props ?? {};
+
+    return startEhrOauth(provider, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartEhrOauthMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startEhrOauth>>
+>;
+export type StartEhrOauthMutationBody = BodyType<StartEhrOauthRequest>;
+export type StartEhrOauthMutationError = ErrorType<void>;
+
+/**
+ * @summary Begin a SMART OAuth handshake with the configured EHR
+ */
+export const useStartEhrOauth = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startEhrOauth>>,
+    TError,
+    { provider: "athenahealth" | "epic"; data: BodyType<StartEhrOauthRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startEhrOauth>>,
+  TError,
+  { provider: "athenahealth" | "epic"; data: BodyType<StartEhrOauthRequest> },
+  TContext
+> => {
+  return useMutation(getStartEhrOauthMutationOptions(options));
+};
+
+/**
+ * @summary Drop the caller's SMART OAuth tokens for a provider
+ */
+export const getDisconnectEhrUrl = (provider: "athenahealth" | "epic") => {
+  return `/api/auth/ehr/${provider}`;
+};
+
+export const disconnectEhr = async (
+  provider: "athenahealth" | "epic",
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDisconnectEhrUrl(provider), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDisconnectEhrMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectEhr>>,
+    TError,
+    { provider: "athenahealth" | "epic" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disconnectEhr>>,
+  TError,
+  { provider: "athenahealth" | "epic" },
+  TContext
+> => {
+  const mutationKey = ["disconnectEhr"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disconnectEhr>>,
+    { provider: "athenahealth" | "epic" }
+  > = (props) => {
+    const { provider } = props ?? {};
+
+    return disconnectEhr(provider, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisconnectEhrMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disconnectEhr>>
+>;
+
+export type DisconnectEhrMutationError = ErrorType<void>;
+
+/**
+ * @summary Drop the caller's SMART OAuth tokens for a provider
+ */
+export const useDisconnectEhr = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectEhr>>,
+    TError,
+    { provider: "athenahealth" | "epic" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disconnectEhr>>,
+  TError,
+  { provider: "athenahealth" | "epic" },
+  TContext
+> => {
+  return useMutation(getDisconnectEhrMutationOptions(options));
 };

@@ -711,3 +711,48 @@ export const ResetTemplatesResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Returns whether the caller has an active SMART OAuth connection to each supported provider, plus the practitioner id we resolved from the OAuth context and when the access token expires.
+ * @summary Current EHR connection status for the signed-in provider
+ */
+export const GetEhrConnectionStatusResponse = zod.object({
+  athenahealth: zod.object({
+    connected: zod.boolean(),
+    practitionerId: zod
+      .string()
+      .nullish()
+      .describe("Practitioner.id resolved from the SMART OAuth context."),
+    scope: zod.string().nullish(),
+    expiresAt: zod.coerce.date().optional(),
+    updatedAt: zod.coerce.date().optional(),
+  }),
+});
+
+/**
+ * Generates a PKCE-protected authorize URL the browser should navigate to. The browser is expected to follow the URL — Athena will redirect back to /api/auth/ehr/callback with a code, which the server exchanges for tokens.
+ * @summary Begin a SMART OAuth handshake with the configured EHR
+ */
+export const StartEhrOauthParams = zod.object({
+  provider: zod.enum(["athenahealth", "epic"]),
+});
+
+export const StartEhrOauthBody = zod.object({
+  returnPath: zod
+    .string()
+    .optional()
+    .describe(
+      'Same-origin path to navigate to after the callback completes (e.g. \"\/settings\").',
+    ),
+});
+
+export const StartEhrOauthResponse = zod.object({
+  authorizeUrl: zod.string(),
+});
+
+/**
+ * @summary Drop the caller's SMART OAuth tokens for a provider
+ */
+export const DisconnectEhrParams = zod.object({
+  provider: zod.enum(["athenahealth", "epic"]),
+});

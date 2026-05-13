@@ -303,6 +303,7 @@ router.post("/notes/:id/send-to-ehr", async (req, res) => {
       note: { id: note.id, body: note.body },
       patient,
       ...(predecessorEhrRef ? { replacesEhrRef: predecessorEhrRef } : {}),
+      ...(req.user?.id ? { userId: req.user.id } : {}),
     });
 
     await db

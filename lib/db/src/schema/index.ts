@@ -3,6 +3,7 @@ export * from "./sessions";
 export * from "./patients";
 export * from "./notes";
 export * from "./note-templates";
+export * from "./ehr-connections";
 export * from "./audit-log";
 export * from "./password-reset-tokens";
 export * from "./rate-limit-buckets";

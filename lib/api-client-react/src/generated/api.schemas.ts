@@ -351,6 +351,28 @@ export interface ReorderTemplatesRequest {
   ids: string[];
 }
 
+export interface EhrProviderConnection {
+  connected: boolean;
+  /**
+   * Practitioner.id resolved from the SMART OAuth context.
+   * @nullable
+   */
+  practitionerId?: string | null;
+  /** @nullable */
+  scope?: string | null;
+  expiresAt?: string;
+  updatedAt?: string;
+}
+
+export interface EhrConnectionStatus {
+  athenahealth: EhrProviderConnection;
+}
+
+export interface StartEhrOauthRequest {
+  /** Same-origin path to navigate to after the callback completes (e.g. "/settings"). */
+  returnPath?: string;
+}
+
 export type ListUsers200 = {
   data: AdminUser[];
 };
@@ -422,4 +444,8 @@ export type ReorderTemplates200 = {
 
 export type ResetTemplates200 = {
   data: NoteTemplate[];
+};
+
+export type StartEhrOauth200 = {
+  authorizeUrl: string;
 };
