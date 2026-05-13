@@ -1,5 +1,5 @@
-import { asc, eq } from "drizzle-orm";
-import { getDb, patientsTable, type Patient } from "@workspace/db";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import { getDb, notesTable, patientsTable, type Patient } from "@workspace/db";
 import { logger } from "./logger";
 
 export type { Patient };
@@ -38,10 +38,29 @@ const DEMO_PATIENTS: Array<Omit<Patient, "createdAt">> = [
 ];
 
 export async function listPatients(): Promise<Patient[]> {
+  // Order by most-recently-touched (latest note's createdAt), falling
+  // back to the patient's own createdAt for those with no notes. This
+  // surfaces the patients a provider is actively working with at the
+  // top — the common "who did I see today" workflow.
+  //
+  // The COALESCE puts patient.createdAt as the secondary key so brand-
+  // new patients with no notes still show in a stable order rather
+  // than getting buried.
+  const lastActivity = sql<Date>`
+    coalesce(
+      (select max(${notesTable.createdAt}) from ${notesTable}
+        where ${notesTable.patientId} = ${patientsTable.id}),
+      ${patientsTable.createdAt}
+    )
+  `;
   return getDb()
     .select()
     .from(patientsTable)
-    .orderBy(asc(patientsTable.lastName), asc(patientsTable.firstName));
+    .orderBy(
+      desc(lastActivity),
+      asc(patientsTable.lastName),
+      asc(patientsTable.firstName),
+    );
 }
 
 export async function findPatient(id: string): Promise<Patient | null> {

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight, CloudDownload, Plus } from "lucide-react";
+import { ChevronRight, CloudDownload, Plus, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -107,9 +107,24 @@ function calculateAge(iso: string): number | null {
 
 export function PatientsPage() {
   const { data, isPending, isError, error } = useListPatients();
+  const [query, setQuery] = useState("");
+
+  // Client-side filter. The patient list for a single provider is small
+  // (hundreds at most), so doing this in the browser keeps the network
+  // chatter low and the UI instant — a server-side fuzzy search would
+  // add latency without a real win at this scale.
+  const filtered = useMemo(() => {
+    const all = data?.data ?? [];
+    const q = query.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((p) => {
+      const haystack = `${p.firstName} ${p.lastName} ${p.mrn}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [data, query]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">Patients</h1>
@@ -128,6 +143,26 @@ export function PatientsPage() {
         </div>
       </header>
 
+      {/* Search — autofocused so a provider can land on this page and
+          start typing a patient name without an extra tap. */}
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted-foreground)"
+          aria-hidden="true"
+        />
+        <Input
+          type="search"
+          inputMode="search"
+          autoFocus
+          autoComplete="off"
+          placeholder="Search by name or MRN…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search patients"
+          className="pl-9 h-12 text-base"
+        />
+      </div>
+
       {isPending ? (
         <p role="status" className="text-(--color-muted-foreground)">
           Loading patients…
@@ -136,9 +171,15 @@ export function PatientsPage() {
         <p role="alert" className="text-(--color-destructive)">
           Couldn't load patients. {error instanceof Error ? error.message : ""}
         </p>
+      ) : filtered.length === 0 ? (
+        <Card className="p-10 text-center text-(--color-muted-foreground)">
+          {query
+            ? `No patients match "${query}".`
+            : "No patients yet."}
+        </Card>
       ) : (
         <ul className="space-y-3" aria-label="Patients">
-          {data.data.map((patient) => {
+          {filtered.map((patient) => {
             const age = calculateAge(patient.dateOfBirth);
             return (
               <li key={patient.id}>
