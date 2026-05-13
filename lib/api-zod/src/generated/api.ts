@@ -553,3 +553,161 @@ export const GetPatientHistoryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Returns the calling user's dictation templates, sorted by their manual ordering. On the user's first call, the server seeds the account with a default template set (SOAP, H&P, Progress, Consult, Discharge) so no provider sees an empty list.
+ * @summary List the signed-in provider's note templates
+ */
+export const listTemplatesResponseDataItemNameMax = 120;
+
+export const ListTemplatesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string().min(1).max(listTemplatesResponseDataItemNameMax),
+      voiceCue: zod
+        .string()
+        .nullable()
+        .describe(
+          "Phrase that, when heard at the start of dictation, swaps to this template. Lowercased server-side; null disables voice matching for this template (selection only).",
+        ),
+      body: zod
+        .string()
+        .describe(
+          "Skeleton inserted into the textarea when the template is selected. May be empty.",
+        ),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new template
+ */
+export const createTemplateBodyNameMax = 120;
+
+export const createTemplateBodyVoiceCueMax = 80;
+
+export const CreateTemplateBody = zod.object({
+  name: zod.string().min(1).max(createTemplateBodyNameMax),
+  voiceCue: zod.string().max(createTemplateBodyVoiceCueMax).nullish(),
+  body: zod.string(),
+});
+
+/**
+ * Accepts the full list of template ids in the new desired order. Any ids the caller doesn't own are rejected. Returns the updated list in its new order.
+ * @summary Replace the manual sort order for the caller's templates
+ */
+export const reorderTemplatesBodyIdsMin = 0;
+
+export const ReorderTemplatesBody = zod.object({
+  ids: zod
+    .array(zod.string())
+    .min(reorderTemplatesBodyIdsMin)
+    .describe("All of the caller's template ids in their new desired order."),
+});
+
+export const reorderTemplatesResponseDataItemNameMax = 120;
+
+export const ReorderTemplatesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string().min(1).max(reorderTemplatesResponseDataItemNameMax),
+      voiceCue: zod
+        .string()
+        .nullable()
+        .describe(
+          "Phrase that, when heard at the start of dictation, swaps to this template. Lowercased server-side; null disables voice matching for this template (selection only).",
+        ),
+      body: zod
+        .string()
+        .describe(
+          "Skeleton inserted into the textarea when the template is selected. May be empty.",
+        ),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Edit a template
+ */
+export const UpdateTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const updateTemplateBodyNameMax = 120;
+
+export const updateTemplateBodyVoiceCueMax = 80;
+
+export const UpdateTemplateBody = zod
+  .object({
+    name: zod.string().min(1).max(updateTemplateBodyNameMax).optional(),
+    voiceCue: zod.string().max(updateTemplateBodyVoiceCueMax).nullish(),
+    body: zod.string().optional(),
+  })
+  .describe(
+    "Partial update. Any provided field replaces; omitted fields are untouched. Pass voiceCue=null to clear the cue.",
+  );
+
+export const updateTemplateResponseNameMax = 120;
+
+export const UpdateTemplateResponse = zod.object({
+  id: zod.string(),
+  name: zod.string().min(1).max(updateTemplateResponseNameMax),
+  voiceCue: zod
+    .string()
+    .nullable()
+    .describe(
+      "Phrase that, when heard at the start of dictation, swaps to this template. Lowercased server-side; null disables voice matching for this template (selection only).",
+    ),
+  body: zod
+    .string()
+    .describe(
+      "Skeleton inserted into the textarea when the template is selected. May be empty.",
+    ),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a template
+ */
+export const DeleteTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * Deletes all of the caller's existing templates and re-seeds the defaults. Useful when a provider wants a clean slate after experimenting.
+ * @summary Replace the caller's templates with the default set
+ */
+export const resetTemplatesResponseDataItemNameMax = 120;
+
+export const ResetTemplatesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string().min(1).max(resetTemplatesResponseDataItemNameMax),
+      voiceCue: zod
+        .string()
+        .nullable()
+        .describe(
+          "Phrase that, when heard at the start of dictation, swaps to this template. Lowercased server-side; null disables voice matching for this template (selection only).",
+        ),
+      body: zod
+        .string()
+        .describe(
+          "Skeleton inserted into the textarea when the template is selected. May be empty.",
+        ),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});

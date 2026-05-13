@@ -293,6 +293,64 @@ export interface PatientHistory {
   allergies: PatientHistoryAllergiesItem[];
 }
 
+export interface NoteTemplate {
+  id: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  /**
+   * Phrase that, when heard at the start of dictation, swaps to this template. Lowercased server-side; null disables voice matching for this template (selection only).
+   * @nullable
+   */
+  voiceCue: string | null;
+  /** Skeleton inserted into the textarea when the template is selected. May be empty. */
+  body: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTemplateRequest {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  /**
+   * @maxLength 80
+   * @nullable
+   */
+  voiceCue?: string | null;
+  body: string;
+}
+
+/**
+ * Partial update. Any provided field replaces; omitted fields are untouched. Pass voiceCue=null to clear the cue.
+ */
+export interface UpdateTemplateRequest {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name?: string;
+  /**
+   * @maxLength 80
+   * @nullable
+   */
+  voiceCue?: string | null;
+  body?: string;
+}
+
+export interface ReorderTemplatesRequest {
+  /**
+   * All of the caller's template ids in their new desired order.
+   * @minItems 0
+   */
+  ids: string[];
+}
+
 export type ListUsers200 = {
   data: AdminUser[];
 };
@@ -352,4 +410,16 @@ export type GetTodayScheduleParams = {
 
 export type GetTodaySchedule200 = {
   data: ScheduledAppointment[];
+};
+
+export type ListTemplates200 = {
+  data: NoteTemplate[];
+};
+
+export type ReorderTemplates200 = {
+  data: NoteTemplate[];
+};
+
+export type ResetTemplates200 = {
+  data: NoteTemplate[];
 };

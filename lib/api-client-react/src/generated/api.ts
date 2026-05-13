@@ -21,6 +21,7 @@ import type {
   AuthUser,
   CreateNoteRequest,
   CreatePatientRequest,
+  CreateTemplateRequest,
   EhrPushResult,
   GetTodaySchedule200,
   GetTodayScheduleParams,
@@ -30,17 +31,23 @@ import type {
   ListNotes200,
   ListNotesParams,
   ListPatients200,
+  ListTemplates200,
   ListUsers200,
   LoginRequest,
   Note,
+  NoteTemplate,
   PasswordResetConfirm,
   PasswordResetRequest,
   Patient,
   PatientHistory,
+  ReorderTemplates200,
+  ReorderTemplatesRequest,
+  ResetTemplates200,
   SignupRequest,
   SyncPatientRequest,
   SyncedPatient,
   UpdateNoteRequest,
+  UpdateTemplateRequest,
   UpdateUserRequest,
 } from "./api.schemas";
 
@@ -1829,3 +1836,505 @@ export function useGetPatientHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns the calling user's dictation templates, sorted by their manual ordering. On the user's first call, the server seeds the account with a default template set (SOAP, H&P, Progress, Consult, Discharge) so no provider sees an empty list.
+ * @summary List the signed-in provider's note templates
+ */
+export const getListTemplatesUrl = () => {
+  return `/api/templates`;
+};
+
+export const listTemplates = async (
+  options?: RequestInit,
+): Promise<ListTemplates200> => {
+  return customFetch<ListTemplates200>(getListTemplatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTemplatesQueryKey = () => {
+  return [`/api/templates`] as const;
+};
+
+export const getListTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListTemplatesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listTemplates>>> = ({
+    signal,
+  }) => listTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTemplates>>
+>;
+export type ListTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the signed-in provider's note templates
+ */
+
+export function useListTemplates<
+  TData = Awaited<ReturnType<typeof listTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new template
+ */
+export const getCreateTemplateUrl = () => {
+  return `/api/templates`;
+};
+
+export const createTemplate = async (
+  createTemplateRequest: CreateTemplateRequest,
+  options?: RequestInit,
+): Promise<NoteTemplate> => {
+  return customFetch<NoteTemplate>(getCreateTemplateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTemplateRequest),
+  });
+};
+
+export const getCreateTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTemplate>>,
+    TError,
+    { data: BodyType<CreateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTemplate>>,
+  TError,
+  { data: BodyType<CreateTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["createTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTemplate>>,
+    { data: BodyType<CreateTemplateRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createTemplate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTemplate>>
+>;
+export type CreateTemplateMutationBody = BodyType<CreateTemplateRequest>;
+export type CreateTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a new template
+ */
+export const useCreateTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTemplate>>,
+    TError,
+    { data: BodyType<CreateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTemplate>>,
+  TError,
+  { data: BodyType<CreateTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getCreateTemplateMutationOptions(options));
+};
+
+/**
+ * Accepts the full list of template ids in the new desired order. Any ids the caller doesn't own are rejected. Returns the updated list in its new order.
+ * @summary Replace the manual sort order for the caller's templates
+ */
+export const getReorderTemplatesUrl = () => {
+  return `/api/templates`;
+};
+
+export const reorderTemplates = async (
+  reorderTemplatesRequest: ReorderTemplatesRequest,
+  options?: RequestInit,
+): Promise<ReorderTemplates200> => {
+  return customFetch<ReorderTemplates200>(getReorderTemplatesUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reorderTemplatesRequest),
+  });
+};
+
+export const getReorderTemplatesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderTemplates>>,
+    TError,
+    { data: BodyType<ReorderTemplatesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reorderTemplates>>,
+  TError,
+  { data: BodyType<ReorderTemplatesRequest> },
+  TContext
+> => {
+  const mutationKey = ["reorderTemplates"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reorderTemplates>>,
+    { data: BodyType<ReorderTemplatesRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reorderTemplates(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReorderTemplatesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reorderTemplates>>
+>;
+export type ReorderTemplatesMutationBody = BodyType<ReorderTemplatesRequest>;
+export type ReorderTemplatesMutationError = ErrorType<void>;
+
+/**
+ * @summary Replace the manual sort order for the caller's templates
+ */
+export const useReorderTemplates = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderTemplates>>,
+    TError,
+    { data: BodyType<ReorderTemplatesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reorderTemplates>>,
+  TError,
+  { data: BodyType<ReorderTemplatesRequest> },
+  TContext
+> => {
+  return useMutation(getReorderTemplatesMutationOptions(options));
+};
+
+/**
+ * @summary Edit a template
+ */
+export const getUpdateTemplateUrl = (id: string) => {
+  return `/api/templates/${id}`;
+};
+
+export const updateTemplate = async (
+  id: string,
+  updateTemplateRequest: UpdateTemplateRequest,
+  options?: RequestInit,
+): Promise<NoteTemplate> => {
+  return customFetch<NoteTemplate>(getUpdateTemplateUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateTemplateRequest),
+  });
+};
+
+export const getUpdateTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTemplate>>,
+    TError,
+    { id: string; data: BodyType<UpdateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTemplate>>,
+  TError,
+  { id: string; data: BodyType<UpdateTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTemplate>>,
+    { id: string; data: BodyType<UpdateTemplateRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateTemplate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTemplate>>
+>;
+export type UpdateTemplateMutationBody = BodyType<UpdateTemplateRequest>;
+export type UpdateTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Edit a template
+ */
+export const useUpdateTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTemplate>>,
+    TError,
+    { id: string; data: BodyType<UpdateTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateTemplate>>,
+  TError,
+  { id: string; data: BodyType<UpdateTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Delete a template
+ */
+export const getDeleteTemplateUrl = (id: string) => {
+  return `/api/templates/${id}`;
+};
+
+export const deleteTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteTemplateUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteTemplate>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteTemplate(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteTemplate>>
+>;
+
+export type DeleteTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a template
+ */
+export const useDeleteTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteTemplateMutationOptions(options));
+};
+
+/**
+ * Deletes all of the caller's existing templates and re-seeds the defaults. Useful when a provider wants a clean slate after experimenting.
+ * @summary Replace the caller's templates with the default set
+ */
+export const getResetTemplatesUrl = () => {
+  return `/api/templates/reset`;
+};
+
+export const resetTemplates = async (
+  options?: RequestInit,
+): Promise<ResetTemplates200> => {
+  return customFetch<ResetTemplates200>(getResetTemplatesUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getResetTemplatesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetTemplates>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetTemplates>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["resetTemplates"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetTemplates>>,
+    void
+  > = () => {
+    return resetTemplates(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetTemplatesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetTemplates>>
+>;
+
+export type ResetTemplatesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Replace the caller's templates with the default set
+ */
+export const useResetTemplates = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetTemplates>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetTemplates>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getResetTemplatesMutationOptions(options));
+};

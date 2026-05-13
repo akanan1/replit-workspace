@@ -544,6 +544,143 @@ paths:
                 $ref: "#/components/schemas/PatientHistory"
         "502":
           description: EHR returned an error
+  /templates:
+    get:
+      operationId: listTemplates
+      tags: [templates]
+      summary: List the signed-in provider's note templates
+      description: >-
+        Returns the calling user's dictation templates, sorted by
+        their manual ordering. On the user's first call, the server
+        seeds the account with a default template set (SOAP, H&P,
+        Progress, Consult, Discharge) so no provider sees an empty
+        list.
+      responses:
+        "200":
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NoteTemplate"
+    post:
+      operationId: createTemplate
+      tags: [templates]
+      summary: Create a new template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateRequest"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteTemplate"
+        "409":
+          description: voiceCue already used by another of the caller's templates
+    put:
+      operationId: reorderTemplates
+      tags: [templates]
+      summary: Replace the manual sort order for the caller's templates
+      description: >-
+        Accepts the full list of template ids in the new desired order.
+        Any ids the caller doesn't own are rejected. Returns the
+        updated list in its new order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderTemplatesRequest"
+      responses:
+        "200":
+          description: Templates re-ordered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NoteTemplate"
+        "400":
+          description: ids list missing a template the caller owns, or includes one they don't
+  /templates/{id}:
+    patch:
+      operationId: updateTemplate
+      tags: [templates]
+      summary: Edit a template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTemplateRequest"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteTemplate"
+        "404":
+          description: Template not found (or not owned by caller)
+        "409":
+          description: voiceCue collides with another of the caller's templates
+    delete:
+      operationId: deleteTemplate
+      tags: [templates]
+      summary: Delete a template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Template deleted
+        "404":
+          description: Template not found (or not owned by caller)
+  /templates/reset:
+    post:
+      operationId: resetTemplates
+      tags: [templates]
+      summary: Replace the caller's templates with the default set
+      description: >-
+        Deletes all of the caller's existing templates and re-seeds the
+        defaults. Useful when a provider wants a clean slate after
+        experimenting.
+      responses:
+        "200":
+          description: Templates reset to defaults
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NoteTemplate"
 components:
   schemas:
     HealthStatus:
@@ -903,3 +1040,76 @@ components:
                 type: array
                 items:
                   type: string
+    NoteTemplate:
+      type: object
+      required:
+        - id
+        - name
+        - voiceCue
+        - body
+        - sortOrder
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        voiceCue:
+          type: ["string", "null"]
+          description: >-
+            Phrase that, when heard at the start of dictation, swaps to
+            this template. Lowercased server-side; null disables voice
+            matching for this template (selection only).
+        body:
+          type: string
+          description: Skeleton inserted into the textarea when the template is selected. May be empty.
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateTemplateRequest:
+      type: object
+      required: [name, body]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        voiceCue:
+          type: ["string", "null"]
+          maxLength: 80
+        body:
+          type: string
+    UpdateTemplateRequest:
+      type: object
+      description: >-
+        Partial update. Any provided field replaces; omitted fields are
+        untouched. Pass voiceCue=null to clear the cue.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        voiceCue:
+          type: ["string", "null"]
+          maxLength: 80
+        body:
+          type: string
+    ReorderTemplatesRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 0
+          items:
+            type: string
+          description: >-
+            All of the caller's template ids in their new desired order.

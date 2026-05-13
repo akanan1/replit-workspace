@@ -64,6 +64,13 @@
       "when": 1778642307528,
       "tag": "0008_add_ehr_practitioner_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778645917394,
+      "tag": "0009_legal_deathbird",
+      "breakpoints": true
     }
   ]
 }

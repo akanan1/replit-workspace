@@ -15,8 +15,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListNotesQueryKey,
+  getListTemplatesQueryKey,
   getNote,
   useListPatients,
+  useListTemplates,
   useSendNoteToEhr,
   type Note,
 } from "@workspace/api-client-react";
@@ -30,7 +32,6 @@ import {
   type AutosaveStatus,
 } from "@/lib/use-note-autosave";
 import {
-  NOTE_TEMPLATES,
   detectTemplateFromVoice,
   stripCueFromTranscript,
   type NoteTemplate,
@@ -76,6 +77,13 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
   const queryClient = useQueryClient();
   const patientsQuery = useListPatients();
   const sendNote = useSendNoteToEhr();
+  const templatesQuery = useListTemplates({
+    query: { queryKey: getListTemplatesQueryKey() },
+  });
+  const templates = useMemo<NoteTemplate[]>(
+    () => templatesQuery.data?.data ?? [],
+    [templatesQuery.data],
+  );
 
   // Snapshot the ?replaces= id on mount so subsequent URL changes don't
   // jump the page out of amend mode.
@@ -156,7 +164,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       let chunk = text;
       if (cueCheckRef.current) {
         cueCheckRef.current = false;
-        const detected = detectTemplateFromVoice(chunk);
+        const detected = detectTemplateFromVoice(chunk, templates);
         if (detected) {
           chunk = stripCueFromTranscript(chunk, detected);
           setTemplateId(detected.id);
@@ -175,7 +183,7 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       });
       setInterimSpeech("");
     },
-    [],
+    [templates],
   );
 
   function toggleDictation() {
@@ -338,17 +346,19 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
           <select
             value={templateId}
             onChange={(e) => {
-              const next = NOTE_TEMPLATES.find((t) => t.id === e.target.value) ?? null;
+              const next = templates.find((t) => t.id === e.target.value) ?? null;
               applyTemplate(next);
             }}
-            disabled={isBusy}
+            disabled={isBusy || templatesQuery.isPending}
             aria-label="Note template"
             className="h-11 min-w-[10rem] rounded-md border border-(--color-border) bg-(--color-card) px-3 text-sm sm:h-9"
           >
-            <option value="">Template…</option>
-            {NOTE_TEMPLATES.map((t) => (
+            <option value="">
+              {templatesQuery.isPending ? "Loading…" : "Template…"}
+            </option>
+            {templates.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.label}
+                {t.name}
               </option>
             ))}
           </select>

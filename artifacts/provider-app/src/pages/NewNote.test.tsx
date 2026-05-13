@@ -25,8 +25,16 @@ vi.mock("@workspace/api-client-react", () => ({
     error: null,
   }),
   useListPatients: () => listPatientsMock(),
+  // No-op stub — the templates surface in this page is only voice-cue
+  // detection + a dropdown, neither of which these tests touch.
+  useListTemplates: () => ({
+    data: { data: [] },
+    isPending: false,
+    isError: false,
+  }),
   getListNotesQueryKey: (params?: { patientId: string }) =>
     params ? ["/api/notes", params] : ["/api/notes"],
+  getListTemplatesQueryKey: () => ["/api/templates"],
 }));
 
 import { NewNotePage } from "./NewNote";
