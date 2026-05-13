@@ -241,7 +241,16 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
 
       <SendStatus state={sendState} draftSavedId={autosave.draftId} />
 
-      <div className="flex items-center justify-end gap-3 border-t border-(--color-border) pt-6">
+      {/* Sticky bottom action bar — primary actions stay reachable when
+          the mobile soft keyboard is open. On desktop the page typically
+          isn't long enough to overflow, so it just sits at the natural
+          end. pb-[env(safe-area-inset-bottom)] respects iOS home-bar inset. */}
+      <div
+        className="sticky bottom-0 -mx-6 flex items-center justify-end gap-3
+                   border-t border-(--color-border) bg-(--color-background)/95
+                   px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-(--color-background)/80
+                   pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden"
+      >
         <Button
           variant="outline"
           size="lg"

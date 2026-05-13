@@ -17,10 +17,13 @@ const buttonVariants = cva(
           "bg-(--color-destructive) text-(--color-destructive-foreground) hover:opacity-90",
       },
       size: {
+        // Mobile floor: every interactive control is ≥44px so it
+        // meets the iOS/Android touch-target guideline. On sm+ screens
+        // (≥640px) we drop back to the previous compact sizes.
         default: "h-11 px-5",
-        sm: "h-9 px-3",
+        sm: "h-11 px-3 sm:h-9",
         lg: "h-12 px-6 text-base",
-        icon: "h-10 w-10",
+        icon: "h-11 w-11 sm:h-10 sm:w-10",
       },
     },
     defaultVariants: {
