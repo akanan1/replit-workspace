@@ -8,6 +8,7 @@ import usersRouter from "./users";
 import scheduleRouter from "./schedule";
 import templatesRouter from "./templates";
 import ehrOauthRouter from "./ehr-oauth";
+import devSandboxRouter from "./dev-sandbox";
 import { requireAuth } from "../middlewares/require-auth";
 import { requireCsrf } from "../middlewares/require-csrf";
 import { auditLog } from "../middlewares/audit";
@@ -17,6 +18,13 @@ const router: IRouter = Router();
 // Public.
 router.use(healthRouter);
 router.use(authRouter);
+
+// Dev-only mounts (NODE_ENV-gated). These bypass auth and CSRF so they
+// can be opened directly in the browser via the tunnel to demo the
+// live Athena sandbox integration.
+if (process.env["NODE_ENV"] !== "production") {
+  router.use(devSandboxRouter);
+}
 
 // Everything below requires a valid session and (for state-changing
 // requests) a matching X-CSRF-Token header. Audit log fires after

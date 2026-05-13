@@ -6,9 +6,11 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "create-test-db": "tsx --env-file=../.env ./src/create-test-db.ts",
-    "reset-dev-db": "tsx --env-file=../.env ./src/reset-dev-db.ts"
+    "reset-dev-db": "tsx --env-file=../.env ./src/reset-dev-db.ts",
+    "athena-sandbox-smoke": "tsx --env-file=../.env ./src/athena-sandbox-smoke.ts"
   },
   "dependencies": {
+    "@workspace/ehr": "workspace:*",
     "pg": "^8.20.0"
   },
   "devDependencies": {

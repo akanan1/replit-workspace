@@ -63,6 +63,37 @@ async function startSession(
   setCsrfCookie(res, generateCsrfToken());
 }
 
+// Dev-only sign-in via URL — used by browser-driven E2E flows where
+// typing into a React-controlled <input> is unreliable. Hard-gated on
+// NODE_ENV so it can never mount in production. The browser hits this
+// directly, the response sets the session cookies, and we 303 back.
+if (process.env["NODE_ENV"] !== "production") {
+  router.get("/auth/dev-login", async (req, res) => {
+    const emailRaw = req.query["email"];
+    const email =
+      typeof emailRaw === "string" ? emailRaw.toLowerCase().trim() : "";
+    if (!email) {
+      res.status(400).json({ error: "missing_email" });
+      return;
+    }
+    const user = await findUserByEmail(email);
+    if (!user) {
+      res.status(404).json({ error: "no_such_user" });
+      return;
+    }
+    await startSession(res, user.id);
+    const returnRaw = req.query["return"];
+    const returnTo =
+      typeof returnRaw === "string" &&
+      returnRaw.startsWith("/") &&
+      !returnRaw.startsWith("//")
+        ? returnRaw
+        : "/";
+    req.log.warn({ email }, "dev-login used (non-production only)");
+    res.redirect(303, returnTo);
+  });
+}
+
 router.post(
   "/auth/signup",
   signupIpRateLimit,

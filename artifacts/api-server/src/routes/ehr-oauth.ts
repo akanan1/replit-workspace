@@ -58,6 +58,39 @@ router.post("/auth/ehr/:provider/start", async (req, res) => {
   }
 });
 
+// Dev-only GET seam for the start endpoint. Browser-automation tools
+// sometimes can't reliably synthesize the click that triggers the
+// React-driven POST, so this lets an E2E driver navigate directly to
+// the authorize URL. Same auth (session cookie + state row) as the
+// POST path; hard-gated on NODE_ENV.
+if (process.env["NODE_ENV"] !== "production") {
+  router.get("/auth/ehr/:provider/dev-start", async (req, res) => {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ error: "unauthenticated" });
+      return;
+    }
+    const provider = parseProvider(req.params.provider);
+    if (!provider) {
+      res.status(400).json({ error: "unknown_provider" });
+      return;
+    }
+    const returnPath = safeReturnPath(req.query["return"]) ?? "/settings";
+    try {
+      const { authorizeUrl } = await startOauthFlow({
+        userId: user.id,
+        provider,
+        returnPath,
+      });
+      req.log.warn({ provider }, "ehr dev-start used (non-production only)");
+      res.redirect(303, authorizeUrl);
+    } catch (err) {
+      req.log.error({ err, provider }, "ehr oauth dev-start failed");
+      res.status(500).json({ error: "oauth_start_failed" });
+    }
+  });
+}
+
 // The callback is hit by the browser following an Athena redirect, NOT
 // by application code — it has to be a GET so the redirect carries.
 // Auth on this route comes from the session cookie the user already

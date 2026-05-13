@@ -502,6 +502,9 @@ importers:
 
   scripts:
     dependencies:
+      '@workspace/ehr':
+        specifier: workspace:*
+        version: link:../lib/integrations/ehr
       pg:
         specifier: ^8.20.0
         version: 8.20.0

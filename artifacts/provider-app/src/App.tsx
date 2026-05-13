@@ -50,6 +50,9 @@ const SettingsPage = lazy(() =>
 const TodayPage = lazy(() =>
   import("@/pages/Today").then((m) => ({ default: m.TodayPage })),
 );
+const DevSandboxPage = lazy(() =>
+  import("@/pages/DevSandbox").then((m) => ({ default: m.DevSandboxPage })),
+);
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -124,6 +127,11 @@ export default function App() {
           <Route path="/settings">
             <RequireAuth>
               <SettingsPage />
+            </RequireAuth>
+          </Route>
+          <Route path="/dev/sandbox">
+            <RequireAuth>
+              <DevSandboxPage />
             </RequireAuth>
           </Route>
           <Route>
