@@ -453,14 +453,19 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
       <SendStatus state={sendState} draftSavedId={autosave.draftId} />
 
       {/* Sticky bottom action bar — primary actions stay reachable when
-          the mobile soft keyboard is open. On desktop the page typically
-          isn't long enough to overflow, so it just sits at the natural
-          end. pb-[env(safe-area-inset-bottom)] respects iOS home-bar inset. */}
+          the mobile soft keyboard is open. On mobile the bottom offset
+          clears the AppLayout tab bar (min-h-[3.5rem] + safe-area-inset
+          + 1px border ≈ calc(3.5rem + safe-area-inset)) so Save+Send
+          aren't hidden behind it. The tab bar already pads for the iOS
+          home indicator, so we just use a flat pb-4 on mobile and only
+          fall back to the safe-area inset on desktop (where no tab bar
+          sits below us). */}
       <div
-        className="sticky bottom-0 -mx-6 flex items-center justify-end gap-3
+        className="sticky bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] md:bottom-0
+                   -mx-6 flex items-center justify-end gap-3
                    border-t border-(--color-border) bg-(--color-background)/95
                    px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-(--color-background)/80
-                   pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden"
+                   pb-4 md:pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden"
       >
         <Button
           variant="outline"
