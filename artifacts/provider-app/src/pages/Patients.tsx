@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Fab } from "@/components/Fab";
 
 function SyncFromEhrButton() {
   const queryClient = useQueryClient();
@@ -134,7 +135,10 @@ export function PatientsPage() {
         </div>
         <div className="flex items-center gap-2">
           <SyncFromEhrButton />
-          <Link href="/patients/new">
+          {/* Desktop "Add patient" — hidden on mobile (< md) because the
+              FAB at the bottom of the viewport carries the same action
+              with a thumb-reachable affordance. */}
+          <Link href="/patients/new" className="hidden md:inline-block">
             <Button size="lg" variant="outline">
               <Plus className="h-4 w-4" aria-hidden="true" />
               Add patient
@@ -208,6 +212,8 @@ export function PatientsPage() {
           })}
         </ul>
       )}
+
+      <Fab href="/patients/new" icon={Plus} label="Add patient" />
     </div>
   );
 }

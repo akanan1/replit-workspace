@@ -143,7 +143,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main
         id="main-content"
         tabIndex={-1}
-        className={`mx-auto w-full max-w-5xl flex-1 px-6 py-10 focus:outline-none ${
+        className={`mx-auto w-full max-w-5xl flex-1 px-4 py-6 focus:outline-none md:px-6 md:py-10 ${
           user
             ? // Reserve space for the bottom tab bar on mobile so content
               // isn't hidden behind it. Desktop has no bottom nav, so keep

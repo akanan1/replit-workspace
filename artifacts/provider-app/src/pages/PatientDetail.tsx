@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Fab } from "@/components/Fab";
 import { cn } from "@/lib/utils";
 
 interface PatientDetailPageProps {
@@ -102,7 +103,11 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
           )}
         </div>
         {patient ? (
-          <Link href={`/patients/${patient.id}/notes/new`}>
+          // Desktop "New note" — hidden on mobile in favor of the FAB.
+          <Link
+            href={`/patients/${patient.id}/notes/new`}
+            className="hidden md:inline-block"
+          >
             <Button size="lg">
               <Plus className="h-4 w-4" aria-hidden="true" />
               New note
@@ -175,6 +180,14 @@ export function PatientDetailPage({ patientId }: PatientDetailPageProps) {
           </ul>
         )}
       </section>
+
+      {patient ? (
+        <Fab
+          href={`/patients/${patient.id}/notes/new`}
+          icon={Plus}
+          label="New note"
+        />
+      ) : null}
     </div>
   );
 }

@@ -466,9 +466,9 @@ export function NewNotePage({ patientId }: NewNotePageProps) {
           sits below us). */}
       <div
         className="sticky bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] md:bottom-0
-                   -mx-6 flex items-center justify-end gap-3
+                   -mx-4 flex items-center justify-end gap-3 md:-mx-6
                    border-t border-(--color-border) bg-(--color-background)/95
-                   px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-(--color-background)/80
+                   px-4 py-4 backdrop-blur md:px-6 supports-[backdrop-filter]:bg-(--color-background)/80
                    pb-4 md:pb-[max(1rem,env(safe-area-inset-bottom))] print:hidden"
       >
         <Button
